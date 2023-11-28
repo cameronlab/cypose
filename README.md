@@ -32,3 +32,11 @@ Example usage:
 python run_segmentation.py --input_file data/movie.nd2 --output_file results/segmented.tiff --model models/7002_CAH_default --gpu --start_frame 10 --end_frame 50 --debug
 ```
 This command will run segmentation on the frames 10 to 50 of *data/movie.nd2* using the 'cyto' model, and save the results as a TIFF stack in *results/segmented.tiff*. It will also save additional files with flows and probabilities for debugging purposes.
+
+## Building a distributable binary
+
+To build a distributable package for your operating system, you'll need to install the dependencies listed above, as well as [pyinstaller](https://www.pyinstaller.org/). Note that you'll need to be on a windows system for this to work. Then, run the following command in the root directory of this repository:
+```bash
+pyinstaller --onefile run_segmentation.py
+```
+This will create a single executable file in the *dist* folder. You can then run this executable from the command line with the same arguments as above. If you are on Windows, this will be an exe file, and if you are on Linux, this will be an ELF file. On Mac, this will be a DMG file that should work.

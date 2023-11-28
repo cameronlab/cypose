@@ -49,6 +49,7 @@ parser.add_argument(
     metavar="input_file",
     type=str,
     nargs=1,
+    required=True,
     help="The input file to run segmentation on",
 )
 parser.add_argument(
@@ -56,6 +57,7 @@ parser.add_argument(
     metavar="output_file",
     type=str,
     nargs=1,
+    required=True,
     help="The output file to save the segmentation to",
 )
 parser.add_argument(
@@ -63,6 +65,7 @@ parser.add_argument(
     metavar="model",
     type=str,
     nargs=1,
+    required=True,
     help="The model to use for segmentation",
 )
 parser.add_argument("--gpu", action=argparse.BooleanOptionalAction)
@@ -86,6 +89,16 @@ parser.add_argument(
     help="Run in debug mode, which will save additional output files",
 )
 
+# Check for required arguments
+if len(parser.parse_args().input_file) == 0:
+    print("No input file provided")
+    exit(1)
+if len(parser.parse_args().output_file) == 0:
+    print("No output file provided")
+    exit(1)
+if len(parser.parse_args().model) == 0:
+    print("No model provided")
+    exit(1)
 # Parse the arguments
 args = parser.parse_args()
 input_file = args.input_file[0]  # Check array indexing? Should just be a string
