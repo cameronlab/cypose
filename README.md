@@ -1,7 +1,7 @@
 # Cyanosegment - Cyanobacteria Optimized Deep Cell Segmentation
 
 ## Description
-This script is designed to run segmentation on a cyanobacteria movie using the [Cellpose](https://github.com/MouseLand/cellpose) model. It reads an ND2 file, applies the specified model for segmentation, and saves the results as a TIFF stack. Included in this repository is our recommended model for segmentation of sp 7002, finetuned from the base cellpose model. This model is saved in the *models* folder.
+This script is designed to run segmentation on a cyanobacteria movie using the [Cellpose](https://github.com/MouseLand/cellpose) model. It reads an ND2 file, applies the specified model for segmentation, and saves the results as a TIFF stack. Included in this repository is our recommended model for segmentation of Synechococcus sp. Strain PCC 7002, finetuned from the base cellpose model. This model is saved in the *models* folder.
 
 ## Installation Instructions
 To use this script, you need to have Python installed along with the following packages: *nd2reader*, *tifffile*, *argparse*, *cellpose*, *tqdm*, and *numpy*. You can install these using pip:
