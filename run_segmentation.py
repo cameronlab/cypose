@@ -41,6 +41,7 @@ import argparse  # Command line arguments
 from cellpose import models  # Cellpose
 from tqdm import tqdm  # Progress bar
 import numpy as np
+import torch
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description="Run segmentation on a tiff movie")
@@ -113,27 +114,54 @@ except TypeError:
     print("No frame bounds provided, segmenting full movie")
     start_frame = 0
     end_frame = -1
+# Check for frame bounds
+if start_frame is None:
+    start_frame = 0
+if end_frame is None:
+    end_frame = -1
+# Check for CUDA
+print("Checking for CUDA")
+if torch.cuda.is_available():
+    print("CUDA is available (GPU)")
+    device = torch.device("cuda")
+elif torch.backends.mps.is_available():
+    print("MPS is available (M1 Mac)")
+    device = torch.device("mps")
+else:
+    print("CUDA is not available (CPU)")
+    device = torch.device("cpu")
+
 print(f"Input file: {input_file}")
 print(f"Output file: {output_file}")
 print(f"Model: {model}")
 print(f"GPU: {gpu}")
+print(f"Using device: {device}")
 print(f"Start frame: {start_frame}")
 print(f"End frame: {end_frame}")
 
+# Check if model has 2 channels in string name
+if "2ch" in model:
+    print(f"Using 2 channel model {model}")
+    chan = [0, 1]
+else:
+    print(f"Using 1 channel model {model}")
+    chan = [0, 0]
+
 # Load the model
 print(f"Loading model {model}")
-model = models.CellposeModel(gpu=gpu, pretrained_model=model)
-# Set channels to [greyscale, no nuclei] or [0,0]
-print("Setting channels to [0,0] (cytoplasm, no nuclei)")
-chan = [0, 0]
+model = models.CellposeModel(
+    # MPS is M1 Mac Support
+    gpu=gpu,
+    pretrained_model=model,
+    device=device,
+)
 
 # Read the input file
 print(f"Reading input file {input_file}")
 with ND2Reader(input_file) as images:
-    images = list(images)
     used_images = images[start_frame:end_frame]
     print(
-        f"Running segmentation on {len(images[start_frame:end_frame])} frames"
+        f"Running segmentation on {len(images[start_frame:end_frame])+1} frames"
     )
     # Run segmentation on all frames
     masks = []
