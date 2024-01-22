@@ -122,19 +122,31 @@ print(f"End frame: {end_frame}")
 
 # Load the model
 print(f"Loading model {model}")
+<<<<<<< Updated upstream
 model = models.CellposeModel(gpu=gpu, pretrained_model=model)
 # Set channels to [greyscale, no nuclei] or [0,0]
 print("Setting channels to [0,0] (cytoplasm, no nuclei)")
 chan = [0, 0]
+=======
+model = models.CellposeModel(
+    # MPS is M1 Mac Support
+    gpu=gpu,
+    pretrained_model=model,
+)
+>>>>>>> Stashed changes
 
 # Read the input file
 print(f"Reading input file {input_file}")
 with ND2Reader(input_file) as images:
     images = list(images)
     used_images = images[start_frame:end_frame]
+<<<<<<< Updated upstream
     print(
         f"Running segmentation on {len(images[start_frame:end_frame])} frames"
     )
+=======
+    print(f"Running segmentation on {len(images[start_frame:end_frame])+1} frames")
+>>>>>>> Stashed changes
     # Run segmentation on all frames
     masks = []
     flows = []
@@ -146,9 +158,7 @@ with ND2Reader(input_file) as images:
         unit="frame",
     ):
         # Speed up with tile=False, uses more memory
-        mask, flow, _ = model.eval(
-            image, diameter=None, channels=chan, tile=False, flow_threshold=0.8
-        )
+        mask, flow, _ = model.eval(image, channels=chan, tile=True, flow_threshold=0.8)
         flows.append(flow[0])
         probs.append(flow[2])
         masks.append(mask)
