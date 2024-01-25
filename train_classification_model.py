@@ -25,6 +25,8 @@ import numpy as np
 import glob as glob
 from skimage import io
 from collections import namedtuple
+from tqdm import tqdm
+import os
 
 
 # Define the data loader to load nd2 files
@@ -47,7 +49,7 @@ class ND2DataSet(torch.utils.data.Dataset):
       - We load the masks using tifffile library, using only frames that we have masks for
     - Cells
       - We use cv2 connectedcomponents to identify each cell in a mask
-      - Then, we use each cell in a mask to subset the movie 
+      - Then, we use each cell in a mask to subset the movie
       - With that subset, we return our 512x512x5 matrix for each cell.
     Functions we need:
     - Init function
@@ -76,30 +78,21 @@ class ND2DataSet(torch.utils.data.Dataset):
     def __init__(self, root_dir, pre_cache=False):
         self.root_dir = root_dir
         self.file_list = glob.glob(f"{root_dir}/*.tif")
-        self.masks = [f.replace('.tif', '_mask.tif') for f in self.file_list]
-        self.length = -1 # Initialize to a fake length
+        self.masks = [f.replace(".tif", "_mask.tif") for f in self.file_list]
+        self.length = -1  # Initialize to a fake length
         # How do we keep track of our data?
         # Consider: namedtuple (fancy tuple)
-        self.fileTuple = namedtuple('fileTuple', ['filename', 'num_frames', 'max_index'])
+        self.fileTuple = namedtuple(
+            "fileTuple", ["filename", "num_frames", "max_index"]
+        )
         self.fileTuples = []
-        self.frameTuple = namedtuple('frameTuple', ['filename', 'frame', 'num_cells', 'max_index'])
+        self.frameTuple = namedtuple(
+            "frameTuple", ["filename", "frame", "num_cells", "max_index"]
+        )
         self.frameTuples = []
         # I need to pull out the file name, num_frames, and max_index
         # then for each frame in each file I neeed to collect its associated file name,
         # frame num, num_cells, and max_index (of cells)
-<<<<<<< Updated upstream
-        cellnumidx =-1 # Initialize prior to count for total cell index
-        for iFile in self.file_list:
-            filename = iFile
-            framelen = -1
-            cellnum =-1 # Initialize prior to count for total cell in each frame
-            with tifffile.TiffFile(iFile) as tif:
-                for iFrame in tif.pages:
-                    num_labels, _ = cv2.connectedComponents(iFrame)
-                    cellnumidx += num_labels
-                    cellnum += num_labels
-                    framelen += 1
-=======
         cellnumidx = 0  # Initialize prior to count for total cell index
         for i, iFile in tqdm(
             enumerate(self.file_list),
@@ -125,15 +118,19 @@ class ND2DataSet(torch.utils.data.Dataset):
                     cellnumidx += 1
                 num_labels = len(centroids)
                 cellnum += num_labels
->>>>>>> Stashed changes
                 # Now create the named tuple instance with the calculated values
-                frame_info = self.frameTuple(filename=filename, frame=framelen, num_cells=cellnum, max_index=cellnumidx)
+                frame_info = self.frameTuple(
+                    filename=filename,
+                    frame=framelen,
+                    num_cells=cellnum,
+                    max_index=cellnumidx,
+                )
                 self.frameTuples.append(frame_info)
             # Now create the named tuple instance with the calculated values
-            file_info = self.fileTuple(filename=filename, num_frames=framelen, max_index=cellnumidx)
+            file_info = self.fileTuple(
+                filename=filename, num_frames=framelen, max_index=cellnumidx
+            )
             self.fileTuples.append(file_info)
-<<<<<<< Updated upstream
-=======
         # Order frame and file tuples by max_index
         self.frameTuples = sorted(self.frameTuples, key=lambda x: x.max_index)
         self.fileTuples = sorted(self.fileTuples, key=lambda x: x.max_index)
@@ -143,18 +140,11 @@ class ND2DataSet(torch.utils.data.Dataset):
             print("Pre-caching dataset")
             for i in tqdm(range(len(self)), desc="Precaching", unit="sample"):
                 self[i]
->>>>>>> Stashed changes
 
     def __len__(self):
         if self.length == -1:
             self.length = 0
             for iFile in self.file_list:
-<<<<<<< Updated upstream
-                with tifffile.TiffFile(iFile) as tif:
-                    for iFrame in tif.pages:
-                        num_labels, _ = cv2.connectedComponents(iFrame)
-                        self.length += num_labels
-=======
                 tif = io.imread(iFile)
                 for iFrame in tif:
                     _, _, _, centroids = cv2.connectedComponentsWithStats(
@@ -162,22 +152,17 @@ class ND2DataSet(torch.utils.data.Dataset):
                     )
                     num_labels = len(centroids)
                     self.length += num_labels
->>>>>>> Stashed changes
         return self.length
-    
+
     def findFile(self, idx):
         left, right = 0, len(self.fileTuples) - 1
         while left <= right:
             mid = left + (right - left) // 2  # Calculate the middle index
             # Check if the idx is present at mid
-<<<<<<< Updated upstream
-            if self.fileTuples[mid].max_index <= idx and self.fileTuples[mid-1].max_index > idx:
-=======
             if (
                 self.fileTuples[mid].max_index <= idx
                 and self.fileTuples[mid - 1].max_index > idx
             ):
->>>>>>> Stashed changes
                 return self.fileTuples[mid].filename  # Return the filename if found
             # If idx is greater, ignore the left half
             elif self.fileTuples[mid].max_index < idx:
@@ -185,13 +170,16 @@ class ND2DataSet(torch.utils.data.Dataset):
             # If idx is smaller, ignore the right half
             else:
                 right = mid - 1
-    
+
     def findFrame(self, idx):
         left, right = 0, len(self.frameTuples) - 1
         while left <= right:
             mid = left + (right - left) // 2  # Calculate the middle index
             # Check if the idx is present at mid
-            if self.frameTuples[mid].max_index <= idx and self.frameTuples[mid-1].max_index > idx:
+            if (
+                self.frameTuples[mid].max_index <= idx
+                and self.frameTuples[mid - 1].max_index > idx
+            ):
                 return self.frameTuples[mid].frame  # Return the frame if found
             # If idx is greater, ignore the left half
             elif self.frameTuples[mid].max_index < idx:
@@ -202,11 +190,6 @@ class ND2DataSet(torch.utils.data.Dataset):
 
         return None  # Return None if the idx is not found
 
-<<<<<<< Updated upstream
-    def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
-=======
     def findFile(self, idx):
         """Naive search for file index"""
         num_files = len(self.fileTuples)
@@ -232,9 +215,8 @@ class ND2DataSet(torch.utils.data.Dataset):
         centroidTuple = self.centroidTuples[idx]
         if centroidTuple.cellidx != idx:
             raise ValueError("Cell index mismatch, this should not happen")
->>>>>>> Stashed changes
 
-        # We are looking for where a certain cell idx is. 
+        # We are looking for where a certain cell idx is.
         # We need to use the named tuples that have built to find the file and frame location of said cell.
         filename = self.findFile(self, idx)
         frame = self.findFrame(self, idx)
@@ -242,28 +224,14 @@ class ND2DataSet(torch.utils.data.Dataset):
         mask = tifffile.TiffFile(filename)
         mask_frame = mask.pages(frame)
         cell_idx = -(idx - self.frameTuples[frame].max_index)
-        numlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask_frame, 1, cv2.CV_32S)
+        numlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(
+            mask_frame, 1, cv2.CV_32S
+        )
         # Parse filename pull out respective.nd2 frame
-        parts = filename.split('_')
+        parts = filename.split("_")
         date_part = parts[0]
         movie = glob.glob(f"{self.root_dir}/{date_part}*.nd2")
         movie = ND2Reader(movie)
-<<<<<<< Updated upstream
-        movie_frame = movie.pages(frame)
-        # Then, crop 512x512 around our cell of interest in the ND2 and mask (will need to connect the mask back to its associated Nd2)
-        # Define the region to crop based on specified location and size
-        x = centroids(labels[cell_idx], 0)
-        y = centroids(labels[cell_idx], 1)
-        box = (x + 256, y + 256, x - 256, y - 256)
-        # Crop the images
-        cropped_mask = mask_frame.crop(box)
-        cropped_movie = movie_frame.crop(box)
-        # We will need to maintain the classification ID based on what mask its taking the cell from
-        cell_class = parts[1] #examples: WT, cyto, csome, pscome (as GFP localizations)
-        # Return the sample + the class as a dictionary. sample = {'image': image (512x512xN), 'class': class}
-        sample = {'image': cropped_movie, 'mask': cropped_mask, 'class': cell_class}
-
-=======
         # Get every channel manually from this janky library yo
         num_channels = movie.sizes["c"]
         first_channel = movie.get_frame(frame)
@@ -355,18 +323,211 @@ class ND2DataSet(torch.utils.data.Dataset):
         }
         # Add the sample to the cache
         self.cache[idx] = sample
->>>>>>> Stashed changes
         return sample
 
+
+class FastND2DataSet(torch.utils.data.Dataset):
+    """
+    Faster implementation of the nd2 dataset loader.
+    Key improvements:
+        - Preload all masks per-file to reduce filesystem thrashing
+        - Save processed mask objects to memory to speed up subsequent loads
+    If needed we will also implement an async buffer class over top for when there are too many files to fit in memory.
+    Future improvements:
+        - Write each frame to its own file on disk for our buffer class when dealing with larger than menmory datasets
+    """
+
+    def __init__(self, root_dir, cache_path=None, calc_cache=True):
+        self.root_dir = root_dir
+        self.file_list = glob.glob(f"{root_dir}/*.tiff")
+        # Make sure we have files
+        if len(self.file_list) == 0:
+            raise ValueError(f"No files found in root directory {root_dir}")
+        self.masks = [f.replace(".tiff", "_mask.tif") for f in self.file_list]
+        cellnumidx = 0  # Initialize prior to count for total cell index
+        if cache_path is None:
+            self.cache_path = f"{root_dir}/cache"
+            if not os.path.exists(self.cache_path):
+                os.mkdir(self.cache_path)
+        # Check if we have cached data
+        if not calc_cache:
+            cached_files = glob.glob(f"{self.cache_path}/*.pth")
+            self.length = len(cached_files)
+            return
+        # Manually start a tqdm progress bar
+        pbar = tqdm(desc="Caching cells", unit="cell", total=35000)
+        # Iterate over every tif file
+        for i, iFile in enumerate(self.file_list):
+            print(f"Loading file {i+1} of {len(self.file_list)}, {iFile}")
+            filename = iFile
+            cellnum = 0  # Initialize prior to count for total cell in each frame
+            tif = io.imread(iFile)
+            movie, parts = self.getAssocND2(filename)
+            for j, iFrame in enumerate(tif):
+                _, _, _, centroids = cv2.connectedComponentsWithStats(
+                    iFrame, 1, cv2.CV_32S
+                )
+                movie_frame = self.getMovieFrame(movie, j)
+                for centroid in centroids:
+                    cellnumidx += 1
+                    # Process the mask
+                    x, y = centroid[0], centroid[1]
+                    cropped_mask, cropped_movie = self.padMask(
+                        x, y, iFrame, movie_frame
+                    )
+                    cell_class = self.oneHotEncode(parts)
+                    stacked_movie = self.stackMoveAndMask(cropped_mask, cropped_movie)
+                    # Add the sample to the cache
+                    sample = {
+                        "image": torch.tensor(cropped_movie, dtype=torch.float32),
+                        "class": torch.tensor(cell_class, dtype=torch.float32),
+                    }
+                    # Save the sample to disk
+                    torch.save(sample, f"{self.cache_path}/{cellnumidx}_data.pth")
+                    # Update the progress bar
+                    pbar.update(1)
+        # Calculate the length of the dataset
+        cached_files = glob.glob(f"{self.cache_path}/*.pth")
+        self.length = len(cached_files)
+
+    def __len__(self):
+        return self.length
+
+    def getAssocND2(self, filename):
+        """
+        Given a tif filename, load the associated nd2 file
+        """
+        parts = os.path.basename(filename).split("_")
+        date_part = parts[0]
+        movie_path = glob.glob(f"{self.root_dir}/{date_part}*.nd2")[0]
+        if len(movie_path) == 0:
+            raise ValueError(f"No associated ND2 file found for {self.root_dir}/{date_part}*.nd2")
+        movie = ND2Reader(movie_path)
+        return movie, parts
+
+    def getMovieFrame(self, movie, frame: int):
+        """
+        Given a movie and a frame, load the frame from the movie
+        """
+        # Get every channel manually because nd2reader is implemented poorly
+        num_channels = movie.sizes["c"]
+        first_channel = movie.get_frame(frame)
+        movie_frame = np.zeros(
+            (first_channel.shape[0], first_channel.shape[1], num_channels + 1)
+        )
+        for c in range(num_channels):
+            frame_2d = movie.get_frame_2D(t=frame, c=c)
+            movie_frame[:, :, c] = frame_2d
+        return movie_frame
+
+    def padMask(self, x, y, mask_frame, movie_frame, size=512):
+        """Pad the mask to the correct size"""
+        # Make sure our size is even
+        if size % 2 != 0:
+            raise ValueError("Data size must be even for automated padding")
+        # Calculate sizes
+        half_size = size // 2
+        movie_x = movie_frame.shape[1]
+        movie_y = movie_frame.shape[0]
+        mask_x = mask_frame.shape[1]
+        mask_y = mask_frame.shape[0]
+        # Make sure the mask is the same size as the movie
+        if movie_x != mask_x or movie_y != mask_y:
+            raise ValueError("Mask and movie must be the same size")
+        x_min = 0
+        x_max = mask_frame.shape[1]
+        y_min = 0
+        y_max = mask_frame.shape[0]
+        if x < x_min + half_size:
+            x1 = x_min
+            x2 = x_min + size
+        elif x > x_max - half_size:
+            x1 = x_max - size
+            x2 = x_max
+        else:
+            x1 = int(x - half_size)
+            x2 = int(x + half_size)
+        if y < y_min + half_size:
+            y1 = y_min
+            y2 = y_min + size
+        elif y > y_max - half_size:
+            y1 = y_max - size
+            y2 = y_max
+        else:
+            y1 = int(x - half_size)
+            y2 = int(x + half_size)
+        # Crop the images
+        cropped_mask = mask_frame[y1:y2, x1:x2]
+        cropped_movie = movie_frame[y1:y2, x1:x2]
+        # If the cropped images are too small, augment
+        if mask_y < size or mask_x < size:
+            # Pad the images
+            cropped_mask = np.pad(
+                cropped_mask,
+                (
+                    (0, size - mask_y),
+                    (0, size - mask_x),
+                ),
+                "constant",
+                constant_values=0,
+            )
+            cropped_movie = np.pad(  # Pad the movie with zeros as well
+                cropped_movie,
+                (
+                    (0, size - movie_y),
+                    (0, size - movie_x),
+                    (0, 0),
+                ),
+                "constant",
+                constant_values=0,
+            )
+        return cropped_mask, cropped_movie
+
+    def oneHotEncode(self, parts):
+        # We will need to maintain the classification ID based on what mask its taking the cell from
+        cell_class = parts[
+            1
+        ]  # examples: WT, cyto, csome, pscome (as GFP localizations)
+        # We will need to one-hot encode the class
+        if cell_class == "WT":
+            cell_class = 0
+        elif cell_class == "cyto":
+            cell_class = 1
+        elif cell_class == "csome":
+            cell_class = 2
+        elif cell_class == "pcsome":
+            cell_class = 3
+        else:
+            raise ValueError(f"Cell class {cell_class} not found")
+        class_dict = {  # One-hot encoding
+            0: [1, 0, 0, 0],
+            1: [0, 1, 0, 0],
+            2: [0, 0, 1, 0],
+            3: [0, 0, 0, 1],
+        }
+        return class_dict[cell_class]
+
+    def stackMoveAndMask(self, cropped_mask, cropped_movie):
+        """Stack the movie and mask"""
+        cropped_movie[:, :, -1] = cropped_mask
+        return cropped_movie
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        # Check if we have already loaded this item
+        try:
+            data = torch.load(f"{self.cache_path}/{idx}_data.pth")
+            return data
+        except KeyError:
+            raise ValueError("Index not found in cache, someone done goofed.")
+
+
 # Load the data
-<<<<<<< Updated upstream
-data = ND2DataSet(root_dir='D:\ZachML\CellType')  # Manually change to initialize the dataset
-=======
-data = ND2DataSet(
+data = FastND2DataSet(
     # root_dir="/Volumes/Extreme SSD/ZachML/CellType"
     root_dir="E:\ZachML\CellType"
 )  # Manually change to initialize the dataset
->>>>>>> Stashed changes
 
 # Print the length of the dataset
 print(len(data))
@@ -375,57 +536,16 @@ print(len(data))
 train_loader = torch.utils.data.DataLoader(data, batch_size=32, shuffle=True)
 
 # Iterating over the dataloader
-<<<<<<< Updated upstream
-for batch in train_loader[0]:
-    print(batch)
-=======
-# for batch in train_loader:
-#    print(batch["image"].shape)
-#    print(batch["class"].shape)
->>>>>>> Stashed changes
+for batch in train_loader:
+    print(batch["image"].shape)
+    print(batch["class"].shape)
 
-# TODO: Define the model
-# We'll train a per-channel model + a fusion model for when we have all channels.
 
 class ConvNetClassifier(nn.Module):
     def __init__(self, num_channels, num_classes):
         super(ConvNetClassifier, self).__init__()
         assert 1 <= num_channels <= 6, "num_channels must be between 1 and 6"
 
-<<<<<<< Updated upstream
-        # Define the layers for each channel
-        self.convs = nn.ModuleList([nn.Conv2d(in_channels=1, out_channels=16, kernel_size=3, stride=1, padding=1) for _ in range(num_channels)])
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-
-        # Define the fusion layer
-        self.fusion = nn.Linear(16 * num_channels, 32)
-
-        # Define the remaining layers
-        self.fc1 = nn.Linear(..., ...)
-        self.dropout = nn.Dropout(p=0.25) # To prevent overfittng
-        self.fc2 = nn.Linear(..., num_classes)
-
-    def forward(self, x):
-        # Process each channel
-        xs = [self.pool(F.relu(conv(x))) for conv in self.convs]
-
-        # Flatten the outputs and concatenate
-        xs = [x.view(x.size(0), -1) for x in xs]
-        x = torch.cat(xs, dim=1)
-
-        # Pass through the fusion layer
-        x = F.relu(self.fusion(x))
-
-        # Pass through the remaining layers
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.dropout(x)
-        x = self.fc2(x)
-        x = F.softmax(x, dim=1) #To get class probabilities   
-
-        return x
-
-=======
         # Convolute that shit baybee
         self.convolutions = nn.Sequential(
             nn.Conv2d(
@@ -520,8 +640,7 @@ for epoch in range(num_epochs):
         optimizer.step()  # Update the weights
 
         # Print statistics
-        #if i % 100 == 0:
+        # if i % 100 == 0:
         print(f"Batch {i+1}: loss = {loss.item():.3f}")
 
->>>>>>> Stashed changes
 # train_classification_model.py ends here
