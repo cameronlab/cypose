@@ -12,6 +12,10 @@ jupyter = "^1.0.0"
 jupyterlab = "^4.0.6"
 torchvision = "^0.15.2"
 cellpose = {extras = ["gui"], version = "^2.2.3"}
+scikit-image = "^0.22.0"
+tqdm = "^4.66.1"
+tensorboard = "^2.15.1"
+torch-tb-profiler = "^0.4.3"
 
 
 [build-system]
