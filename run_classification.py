@@ -11,31 +11,43 @@ import cv2
 from nd2reader import ND2Reader
 import numpy as np
 from tqdm import tqdm
-import torch
 
 if torch.cuda.is_available():
     print("CUDA is available (GPU)")
     device = torch.device("cuda")
 elif torch.backends.mps.is_available():
-    print("MPS is available (M1 Mac)")
+    print("MPS is available (M1 Mac or Hackintosh)")
     device = torch.device("mps")
 else:
     print("GPU is not available (CPU) :(")
     device = torch.device("cpu")
 
-
 def load_model(model_path, model_arch=ConvNetClassifier, device=device):
     # Initialize the model
     model = model_arch(num_channels=5, num_classes=4)
     # Load the model per-state dict
-    saved_model = torch.load(model_path)
+    saved_model = torch.load(model_path, map_location=device)
     model.load_state_dict(saved_model)
     model.eval()
     return model.to(device)
 
+""" def load_model(model_path, model_arch=ConvNetClassifier, device=device):
+    # Initialize the model
+    model = model_arch(num_channels=5, num_classes=4).to(device)
+    # Load the model per-state dict
+    saved_model = torch.load(model_path)
+    # We need to manually load the state dict if it was saved on a different device
+    state_dict = model.state_dict()
+    for k,v in saved_model.items():
+        try:
+            state_dict[k] = v.to(device)
+        except KeyError:
+            print(f"Attribute {k} not found in model, skipping")
+    model.load_state_dict(state_dict)
+    model.eval()
+    return model """
 
 movieTuple = namedtuple("movieTuple", ["nd2", "tif"])
-
 
 def load_data(data_dir):
     # First get all the nd2 files
@@ -44,7 +56,8 @@ def load_data(data_dir):
     matches = []
     for nd2 in nd2s:
         nd2_base = os.path.basename(nd2)
-        tif = glob(f"{data_dir}*{nd2_base[:-4]}*.tif")
+        tif = glob(f"{data_dir}/{nd2_base[:-4]}.tif")
+        print(f"{data_dir}/{nd2_base[:-4]}.tif")
         if len(tif) == 1:
             matches.append(movieTuple(nd2, tif[0]))
         else:
@@ -104,7 +117,7 @@ if __name__ == "__main__":
             for sample, centroid, frame_num in tqdm(movie_cells(nd2, tif), desc="Classifying"):
                 cell_class = model.predict(sample)
                 class_str = ND2DataSet.oneHotDecode(cell_class)
-                f.write(f"{frame_num},{centroid[0]},{centroid[1]},{class_str}\n")
+                f.write(f"{frame_num + 1},{centroid[0]},{centroid[1]},{class_str}\n")
                 # predictions = model(sample)[0]
                 # f.write(
                 #     f"{centroid[0]},{centroid[1]},{predictions[0]},{predictions[1]},{predictions[2]},{predictions[3]}\n"

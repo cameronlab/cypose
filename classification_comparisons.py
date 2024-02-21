@@ -137,7 +137,7 @@ class ClassificationComparer:
 
 
 # Path to classification model ground truth and predicted csv files
-data_dir = "E:\ZachML\class_test"
+data_dir = "E:/ZachML/class_test"
 
 # Create an instance of the ClassificationComparer class
 comparer = ClassificationComparer(data_dir)

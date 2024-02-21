@@ -21,10 +21,11 @@ import tifffile
 from nd2reader import ND2Reader
 import numpy as np
 import glob as glob
-from skimage import io
+from skimage import io, img_as_ubyte
 from tqdm import tqdm
 import os
 from functools import lru_cache
+from math import isnan
 from torch.utils.tensorboard import SummaryWriter
 
 class ND2DataSet(torch.utils.data.Dataset):
@@ -40,12 +41,13 @@ class ND2DataSet(torch.utils.data.Dataset):
 
     def __init__(self, root_dir, cache_path=None, calc_cache=False):
         self.root_dir = root_dir
-        self.file_list = glob.glob(f"{root_dir}/*.tiff")
+        self.file_list = glob.glob(f"{root_dir}/*.tif")
+        print(f"Found {len(self.file_list)} tif files in {root_dir}")
         self.tile_size = 64
-        # Make sure we have filesA
+        # Make sure we have files
         if len(self.file_list) == 0:
             raise ValueError(f"No files found in root directory {root_dir}")
-        self.masks = [f.replace(".tiff", "_mask.tif") for f in self.file_list]
+        self.masks = [f.replace(".tif", "_mask.tif") for f in self.file_list]
         cellnumidx = 0  # Initialize prior to count for total cell index
         if cache_path is None:
             self.cache_path = f"{root_dir}/cache"
@@ -57,7 +59,8 @@ class ND2DataSet(torch.utils.data.Dataset):
             self.length = len(cached_files)
             return
         # Manually start a tqdm progress bar
-        pbar = tqdm(desc="Caching cells", unit="cell", total=35000)
+        pbar = tqdm(desc="Caching cells", unit="cell", total=1000)
+        wasnan = 0
         # Iterate over every tif file
         for i, iFile in enumerate(self.file_list):
             print(f"Loading file {i+1} of {len(self.file_list)}, {iFile}")
@@ -65,22 +68,34 @@ class ND2DataSet(torch.utils.data.Dataset):
             tif = io.imread(iFile)
             movie, parts = self.getAssocND2(filename)
             for j, iFrame in enumerate(tif):
+                # Validate the frame - it cannot be all 0 or all positive
+                if iFrame.sum() == 0 or iFrame.sum() == iFrame.size:
+                    print(f"Mask {j+1} appears to be empty, skipping")
+                    continue
+                # Convert image to 8-bit
+                iFrame = img_as_ubyte(iFrame)
                 _, _, _, centroids = cv2.connectedComponentsWithStats(
                     iFrame, 1, cv2.CV_32S
                 )
+                # Load the movie frame
                 movie_frame = self.getMovieFrame(movie, j)
                 for centroid in centroids:
                     # Process the mask
                     x, y = centroid[0], centroid[1]
+                    if isnan(x) or isnan(y):
+                        raise ValueError(f"Centroid is NaN at {x},{y}")
                     cropped_mask, cropped_movie = self.padMask(
                         x, y, iFrame, movie_frame, self.tile_size
                     )
                     # If our mask is empty, skip it
                     if cropped_mask.sum() < 10:
+                        wasnan += 1
                         #print(f"Skipping empty mask at {x},{y}")
                         continue
                     cell_class = self.oneHotEncode(parts)
                     stacked_movie = self.stackMovieAndMask(cropped_mask, cropped_movie)
+                    # Zero out the stacked movie where the mask is empty
+                    stacked_movie[stacked_movie[:, :, -1] == 0] = 0
                     # Add the sample to the cache
                     sample = {
                         "image": torch.tensor(stacked_movie, dtype=torch.float32),
@@ -96,6 +111,8 @@ class ND2DataSet(torch.utils.data.Dataset):
         # Calculate the length of the dataset
         cached_files = glob.glob(f"{self.cache_path}/*.pth")
         self.length = len(cached_files)
+
+        print(f"Skipped {wasnan} empty masks")
 
     def __len__(self):
         return self.length
@@ -120,8 +137,8 @@ class ND2DataSet(torch.utils.data.Dataset):
         """
         movie.bundle_axes = ['y', 'x', 'c']
         movie_frame = movie.get_frame(frame)
-        frame_array = np.zeros((movie_frame.shape[0], movie_frame.shape[1], 6), dtype=np.float32)
-        frame_array[:,:,0:5] = movie_frame
+        frame_array = np.zeros((movie_frame.shape[0], movie_frame.shape[1], 4), dtype=np.float32)
+        frame_array[:,:,0:3] = movie_frame
         return frame_array
 
     @staticmethod
@@ -139,17 +156,17 @@ class ND2DataSet(torch.utils.data.Dataset):
         if movie_x != mask_x or movie_y != mask_y:
             raise ValueError("Mask and movie must be the same size")
         x_min, x_max = 0, mask_x
-        y_min, y_max = 0, mask_y
+        y_min, y_max = 0, mask_y 
+        mask_shape = mask_frame.shape
+        # Crop the images
         x1 = int(max(x - half_size, x_min))
         x2 = int(min(x + half_size, x_max))
         y1 = int(max(y - half_size, y_min))
         y2 = int(min(y + half_size, y_max))
-        # Crop the images
         cropped_mask = mask_frame[y1:y2, x1:x2]
         cropped_movie = movie_frame[y1:y2, x1:x2]
-        # If the cropped images are too small, augment
-        mask_shape = cropped_mask.shape
         if mask_shape[0] < size or mask_shape[1] < size:
+            # If the cropped images are too small, augment
             # Pad the images
             cropped_mask = np.pad(
                 cropped_mask,
@@ -163,17 +180,18 @@ class ND2DataSet(torch.utils.data.Dataset):
                 "constant",
                 constant_values=0,
             )
+        #else:
+        #    cropped_mask = np.zeros((size, size), dtype=np.uint8)
+        #    cropped_movie = np.zeros((size, size, 4), dtype=np.uint8)
         return cropped_mask, cropped_movie
 
     @staticmethod
     def oneHotEncode(parts):
         # We will need to maintain the classification ID based on what mask its taking the cell from
-        cell_class = parts[1]  
+        cell_class = parts[3]  
         class_dict = {  # One-hot encoding
-            "WT": [1, 0, 0, 0],
-            "cyto": [0, 1, 0, 0],
-            "csome": [0, 0, 1, 0],
-            "pcsome": [0, 0, 0, 1],
+            "WT.tif": [1, 0],
+            "CPC.tif": [0, 1],
         }
         return class_dict[cell_class]
     
@@ -182,9 +200,7 @@ class ND2DataSet(torch.utils.data.Dataset):
         # We will need to maintain the classification ID based on what mask its taking the cell from
         class_dict = {  # One-hot encoding
             0: "WT",
-            1: "cyto",
-            2: "csome",
-            3: "pcsome",
+            1: "CPC",
         }
         return class_dict[one_hot]
 
@@ -268,7 +284,7 @@ class ConvNetClassifier(nn.Module):
 
     def forward(self, x):
         # Throw away [:,:,:,5] channel
-        x = x[:, :, :, 0:5]
+        x = x[:, :, :, 0:3]
         # Train as normal
         x = x.permute(0, 3, 1, 2)
         x = self.conv_layers(x)
@@ -312,7 +328,7 @@ if __name__ == "__main__":
     # Load the data
     data = ND2DataSet(
         #root_dir="/Volumes/Extreme SSD/ZachML/CellType"
-        root_dir="E:/ZachML/CellType"
+        root_dir="E:/ZachML/cpcData"
     )  # Manually change to initialize the dataset
 
     # Print the length of the dataset
@@ -322,14 +338,16 @@ if __name__ == "__main__":
     batch_size = 32
     # Split the data into train and test sets
     train_dataset, test_dataset = torch.utils.data.random_split(
-        data, [0.999, 0.001]
+        data, [0.8, 0.2]
     )
+    print(f"Train dataset length: {len(train_dataset)}")
+    print(f"Test dataset length: {len(test_dataset)}")
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
     # Set up the training loop
     # First construct a model to optimize
-    model = ConvNetClassifier(num_channels=5, num_classes=4)
+    model = ConvNetClassifier(num_channels=3, num_classes=2)
     # model = ConvolutionalAutoencoder()
     # First we need to define our optimizer and loss function
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
@@ -363,7 +381,7 @@ if __name__ == "__main__":
 
 
     # Now we can train the model
-    num_epochs = 30
+    num_epochs = 100
     for epoch in range(num_epochs):
         print(f"Epoch {epoch+1}")
         model.train()
@@ -397,8 +415,8 @@ if __name__ == "__main__":
             optimizer.step()  # Update the weights
 
             # Print statistics
-            # if i % 100 == 0:
-            #print(f"Batch {i+1}: loss = {loss.item():.3f}")
+            #if i % 3 == 0:
+            #    print(f"Batch {i+1}: loss = {train_loss.item():.3f}")
             writer.add_scalar("Loss/train", train_loss.item(), epoch * len(train_loader) + i)
             writer.add_scalar("Accuracy/train", train_accuracy.item(), epoch * len(train_loader) + i)
 
@@ -433,8 +451,8 @@ if __name__ == "__main__":
         writer.add_scalar("Loss/test", test_loss.item(), epoch * len(train_loader))
         writer.add_scalar("Accuracy/test", test_accuracy.item(), epoch * len(train_loader))
 
-        # Save the model
-        print("Saving model...")
-        torch.save(model.state_dict(), f"models/7002_test4_classifier_model_{epoch+1}.pth")
+    # Save the model
+    print("Saving model...")
+    torch.save(model.state_dict(), "models/cpc_test_classifier_model.pth")
 
 # train_classification_model.py ends here
