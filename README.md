@@ -1,7 +1,7 @@
 # Cyanosegment - Cyanobacteria Optimized Deep Cell Segmentation
 
 <p align="center">
-	⚠️ The main documentation for this project can be found at <https://cameronlab.github.io/cypose/> ⚠️
+	⚠️ The main documentation for this project can be found on [https://cameronlab.github.io/cypose/](GitHub Pages) ⚠️
 </p>
 
 ## Description
