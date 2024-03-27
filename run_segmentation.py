@@ -36,15 +36,19 @@
 # Code:
 
 from nd2reader import ND2Reader  # ND2 file reading
+from skimage import io
 import tifffile  # Tiff file writing
 import argparse  # Command line arguments
 from cellpose import models  # Cellpose
+from cellpose import denoise  # Denoising
 from tqdm import tqdm  # Progress bar
 import numpy as np
 import torch
+import os
 
 # Parse command line arguments
-parser = argparse.ArgumentParser(description="Run segmentation on a tiff movie")
+parser = argparse.ArgumentParser(description="Run segmentation on a movie")
+# Standard flags
 parser.add_argument(
     "--input_file",
     metavar="input_file",
@@ -84,6 +88,26 @@ parser.add_argument(
     nargs="?",
     help="The frame to end segmentation on",
 )
+# Experimental flags
+parser.add_argument(
+    "--denoise",
+    action=argparse.BooleanOptionalAction,
+    help="Run denoising before segmentation",
+)
+parser.add_argument(
+    "--niter",
+    metavar="niter",
+    type=int,
+    nargs="?",
+    help="The number of iterations to run segmentation per-frame",
+)
+parser.add_argument(
+    "--flow_threshold",
+    metavar="flow_threshold",
+    type=float,
+    nargs="?",
+    help="The flow threshold to use for segmentation",
+)
 parser.add_argument(
     "--debug",
     action=argparse.BooleanOptionalAction,
@@ -104,9 +128,14 @@ if len(parser.parse_args().model) == 0:
 args = parser.parse_args()
 input_file = args.input_file[0]  # Check array indexing? Should just be a string
 output_file = args.output_file[0]
-model = args.model[0]
+model_name = args.model[0]
 gpu = args.gpu
+denoise_p = args.denoise  # denoise is a package, so denote as a prefix _p
+niter = args.niter
+flow_threshold = args.flow_threshold
 debug = args.debug
+
+# Check for frame bounds
 try:
     start_frame = args.start_frame
     end_frame = args.end_frame
@@ -114,11 +143,11 @@ except TypeError:
     print("No frame bounds provided, segmenting full movie")
     start_frame = 0
     end_frame = -1
-# Check for frame bounds
 if start_frame is None:
     start_frame = 0
 if end_frame is None:
     end_frame = -1
+
 # Check for CUDA
 print("Checking for CUDA")
 if torch.cuda.is_available():
@@ -131,34 +160,89 @@ else:
     print("CUDA is not available (CPU)")
     device = torch.device("cpu")
 
+# Check for experimental flags
+if denoise_p:
+    print("Denoising enabled")
+if niter:
+    niter = int(niter)
+    print(f"Using {niter} iterations")
+else:
+    niter = None
+if flow_threshold:
+    flow_threshold = float(flow_threshold)
+    print(f"Using flow threshold {flow_threshold}")
+else:
+    flow_threshold = 0.75
+if debug:
+    print("Debug mode enabled")
+
+# Check filename to determine TIFF or ND2
+if input_file.endswith(".nd2"):
+    file_type = "nd2"
+elif input_file.endswith(".tif") or input_file.endswith(".tiff"):
+    file_type = "tif"
+
+# Print out the arguments
 print(f"Input file: {input_file}")
+print(f"File type: {file_type}")
 print(f"Output file: {output_file}")
-print(f"Model: {model}")
+print(f"Model: {model_name}")
 print(f"GPU: {gpu}")
 print(f"Using device: {device}")
 print(f"Start frame: {start_frame}")
 print(f"End frame: {end_frame}")
 
-# Check if model has 2 channels in string name
-if "2ch" in model:
-    print(f"Using 2 channel model {model}")
-    chan = [0, 1]
+if os.path.exists(model_name):
+    # Check if model has 2 channels in string name
+    if "2ch" in model_name:
+        print(f"Using 2 channel model {model_name}")
+        chan = [0, 1]
+    else:
+        print(f"Using 1 channel model {model_name}")
+        chan = [0, 0]
+
+    # Load the model
+    print(f"Loading model {model_name}")
+    model = models.CellposeModel(
+        # MPS is M1 Mac Support
+        gpu=gpu,
+        pretrained_model=model_name,
+        device=device,
+    )
 else:
-    print(f"Using 1 channel model {model}")
+    print(f"Using base model {model_name}")
+    model = models.CellposeModel(
+        # MPS is M1 Mac Support
+        gpu=gpu,
+        model_type=model_name,
+        device=device,
+    )
     chan = [0, 0]
 
-# Load the model
-print(f"Loading model {model}")
-model = models.CellposeModel(
-    # MPS is M1 Mac Support
-    gpu=gpu,
-    pretrained_model=model,
-    device=device,
+# Load the size estimation model
+print("Loading size estimation model")
+model_type = "cyto2"
+pretrained_size = models.size_model_path(model_type)
+size_model = models.SizeModel(
+    device=device, pretrained_size=pretrained_size, cp_model=model
 )
+size_model.model_type = model_type
+# Load new cellpose 3 denoising model
+if denoise_p:
+    print("Loading denoising model")
+    denoise_model = denoise.DenoiseModel(
+        device=device, model_type="denoise_cyto3"
+    )
 
-# Read the input file
+# Select the file reader
+if file_type == "nd2":
+    reader = ND2Reader
+elif file_type == "tif":
+    reader = tifffile.imread
+
 print(f"Reading input file {input_file}")
-with ND2Reader(input_file) as images:
+size = None
+with reader(input_file) as images:
     used_images = images[start_frame:end_frame]
     print(
         f"Running segmentation on {len(images[start_frame:end_frame])+1} frames"
@@ -168,15 +252,46 @@ with ND2Reader(input_file) as images:
     flows = []
     probs = []
     # Run on single core or GPU if available
-    for image in tqdm(
-        used_images,
+    # TODO Fix to use minibatches
+    for i, image in tqdm(
+        enumerate(used_images),
         desc="Frames",
         unit="frame",
+        total=len(used_images),
     ):
+        # pbar = tqdm(
+        #     enumerate(used_images),
+        #     desc="Frames",
+        #     unit="frame",
+        #     total=len(used_images),
+        # )
+        # for i in range(0, len(used_images), batch_size):
+        image = np.array(image)
+        # Grab array
+        # image = np.array(used_images[i : i + batch_size])
+        # Convert axis 0 to a list
+        # image = list(image[i, :, :] for i in range(image.shape[0]))
+        # image = np.array(image)
+        # Size estimation (do once)
+        # if size is None:
+        size, _ = size_model.eval(image, channels=chan)
+        # print(f"Size estimated as {size}")
+        # Denoising
+        if denoise_p:
+            image = denoise_model.eval(image, channels=chan)
         # Speed up with tile=False, uses more memory
         mask, flow, _ = model.eval(
-            image, diameter=None, channels=chan, tile=False, flow_threshold=0.8
+            image,
+            diameter=size,
+            channels=chan,
+            tile=True,
+            niter=niter,
+            flow_threshold=flow_threshold,
         )
+        # for mask_i, flow_i in zip(mask, flow):
+        #     masks.append(mask_i)
+        #     flows.append(flow_i[0])
+        #     probs.append(flow_i[2])
         flows.append(flow[0])
         probs.append(flow[2])
         masks.append(mask)
@@ -186,7 +301,7 @@ with ND2Reader(input_file) as images:
     # Save the mask
     print(f"Saving to {output_file}")
     # Coerce to single channel
-    masks = np.clip(masks, 0, 1)
+    # masks = np.clip(masks, 0, 1)
     # Manually save the masks
     tifffile.imwrite(output_file, masks)
     if debug:

@@ -1,5 +1,9 @@
 # Cyanosegment - Cyanobacteria Optimized Deep Cell Segmentation
 
+<p align="center">
+	⚠️ The main documentation for this project can be found at <https://cameronlab.github.io/cypose/> ⚠️
+</p>
+
 ## Description
 This script is designed to run segmentation on a cyanobacteria movie using the [Cellpose](https://github.com/MouseLand/cellpose) model. It reads an ND2 file, applies the specified model for segmentation, and saves the results as a TIFF stack. Included in this repository is our recommended model for segmentation of *Synechococcus sp.* Strain PCC 7002, finetuned from the base cellpose model. This model is saved in the *models* folder.
 
