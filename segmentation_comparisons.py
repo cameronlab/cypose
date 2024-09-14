@@ -13,7 +13,8 @@
 # ROC curves and the metrics precision, recall, and IoU.
 
 # Code:
-
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import precision_score, recall_score, jaccard_score
@@ -21,6 +22,8 @@ import numpy as np
 from skimage import io
 import os
 import pandas as pd
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
 
 
 class SegmentationComparer:
@@ -37,27 +40,23 @@ class SegmentationComparer:
         self.loadSegData(data_dir)
 
         # Calculate metrics
-        precision, recall, iou = self.calculate_metrics()
+        precision, recall, iou = self.calculateMetrics()
         print(f"Precision: {precision}")
         print(f"Recall: {recall}")
         print(f"IoU: {iou}")
 
         # Create a DataFrame
-        df = pd.DataFrame({
-            'Precision': [precision],
-            'Recall': [recall],
-            'IoU': [iou]
-        })
+        df = pd.DataFrame({"Precision": [precision], "Recall": [recall], "IoU": [iou]})
 
         # Save DataFrame to a .csv file
-        df.to_csv(os.path.join(data_dir, 'metrics.csv'), index=False)
+        df.to_csv(os.path.join(data_dir, "metrics.csv"), index=False)
 
         # Save metrics to csv file
         with open("metrics.csv", "a") as f:
             f.write(f"{precision},{recall},{iou}\n")
 
         # Generate ROC plot
-        self.create_ROC_Plot(data_dir)
+        self.createConfusionMatrix(data_dir)
 
     def loadSegData(self, data_dir):
         """
@@ -76,21 +75,55 @@ class SegmentationComparer:
         self.predicted = predicted_array.flatten()
 
         # Convert to binary
-        self.ground_truth = (self.ground_truth == 65535).astype(int)
-        self.predicted = (self.predicted == 65535).astype(int)
-                
+        self.ground_truth = np.where(self.ground_truth > 0, 1, 0)
+        self.predicted = np.where(self.predicted > 0, 1, 0)
 
-    def calculate_metrics(self):
+    def calculateMetrics(self):
         """
         Calculates precision, recall, and IoU metrics.
         """
+        print("Calculating metrics...")
         precision = precision_score(self.ground_truth, self.predicted)
         recall = recall_score(self.ground_truth, self.predicted)
         iou = jaccard_score(self.ground_truth, self.predicted)
 
         return precision, recall, iou
 
-    def create_ROC_Plot(self,data_dir):
+    def createConfusionMatrix(self, data_dir):
+        """
+        Generates a confusion matrix plot for the given ground truth and predictions.
+        """
+        print("Creating confusion matrix...")
+        # Calculate confusion matrix
+        cm = confusion_matrix(self.ground_truth, self.predicted)
+
+        # Normalize confusion matrix
+        cm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
+
+        # Define your new labels
+        class_labels = ["Background", "Cell"]
+
+        # Plot confusion matrix
+        plt.figure(figsize=(10, 10))
+        sns.heatmap(
+            cm,
+            annot=True,
+            fmt=".3f",
+            linewidths=0.5,
+            square=True,
+            cmap="Blues_r",
+            xticklabels=class_labels,
+            yticklabels=class_labels,
+        )
+        plt.ylabel("Actual label")
+        plt.xlabel("Predicted label")
+        plt.title("Confusion Matrix", size=15)
+        plt.show()
+
+        # save confusion matrix as pdf
+        plt.savefig(os.path.join(data_dir, "confusion_matrix.pdf"))
+
+    def createROCPlot(self, data_dir):
         """
         Generates a ROC plot for the given ground truth and predictions.
         """
@@ -115,10 +148,10 @@ class SegmentationComparer:
         plt.ylabel("True Positive Rate")
         plt.title("Receiver Operating Characteristic")
         plt.legend(loc="lower right")
-        plt.show()
 
         # save ROC curve as png
         plt.savefig(os.path.join(data_dir, "ROC.png"))
+        plt.show()
 
         # ROC curve code taken from https://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html
 

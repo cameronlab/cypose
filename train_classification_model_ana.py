@@ -41,8 +41,8 @@ class ND2DataSet(torch.utils.data.Dataset):
     def __init__(self, root_dir, cache_path=None, calc_cache=False):
         self.root_dir = root_dir
         self.file_list = glob.glob(f"{root_dir}/*.tiff")
-        self.tile_size = 32
-        # Make sure we have filesA
+        self.tile_size = 64
+        # Make sure we have files
         if len(self.file_list) == 0:
             raise ValueError(f"No files found in root directory {root_dir}")
         self.masks = [f.replace(".tiff", "_mask.tif") for f in self.file_list]
@@ -170,10 +170,12 @@ class ND2DataSet(torch.utils.data.Dataset):
         # We will need to maintain the classification ID based on what mask its taking the cell from
         cell_class = parts[1]  
         class_dict = {  # One-hot encoding
-            "WT": [1, 0, 0, 0],
-            "cyto": [0, 1, 0, 0],
-            "csome": [0, 0, 1, 0],
-            "pcsome": [0, 0, 0, 1],
+            "Veg": [1, 0],
+            "Het": [0, 1]
+            #"WT": [1, 0, 0, 0],
+            #"cyto": [0, 1, 0, 0],
+            #"csome": [0, 0, 1, 0],
+            #"pcsome": [0, 0, 0, 1],
         }
         return class_dict[cell_class]
     
@@ -181,10 +183,12 @@ class ND2DataSet(torch.utils.data.Dataset):
     def oneHotDecode(one_hot):
         # We will need to maintain the classification ID based on what mask its taking the cell from
         class_dict = {  # One-hot encoding
-            0: "WT",
-            1: "cyto",
-            2: "csome",
-            3: "pcsome",
+            0: "Veg",
+            1: "Het",
+            #0: "WT",
+            #1: "cyto",
+            #2: "csome",
+            #3: "pcsome",
         }
         return class_dict[one_hot]
 
@@ -260,15 +264,15 @@ class ConvNetClassifier(nn.Module):
         )
 
         self.fc_layers = nn.Sequential(
-            nn.Linear(16 * 8 * 4, 256), #change first value to 64 for tile size 64
+            nn.Linear(64 * 8 * 4, 256),
             nn.LeakyReLU(0.2),
             nn.Linear(256, num_classes),
-            # nn.Softmax(dim=1)
+            nn.Softmax(dim=1)
         )
 
     def forward(self, x):
         # Throw away [:,:,:,5] channel
-        x = x[:, :, :, 0:5]
+        x = x[:, :, :, 0:4]
         # Train as normal
         x = x.permute(0, 3, 1, 2)
         x = self.conv_layers(x)
@@ -312,7 +316,7 @@ if __name__ == "__main__":
     # Load the data
     data = ND2DataSet(
         #root_dir="/Volumes/Extreme SSD/ZachML/CellType"
-        root_dir="F:/Cypose/7002/7002Class"
+        root_dir="X:\Clair Huffine\AnaSeg\HetVeg"
     )  # Manually change to initialize the dataset
 
     # Print the length of the dataset
@@ -322,14 +326,14 @@ if __name__ == "__main__":
     batch_size = 32
     # Split the data into train and test sets
     train_dataset, test_dataset = torch.utils.data.random_split(
-        data, [0.999, 0.001]
+        data, [0.80, 0.20]
     )
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
     # Set up the training loop
     # First construct a model to optimize
-    model = ConvNetClassifier(num_channels=5, num_classes=4)
+    model = ConvNetClassifier(num_channels=4, num_classes=2)
     # model = ConvolutionalAutoencoder()
     # First we need to define our optimizer and loss function
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
@@ -435,6 +439,6 @@ if __name__ == "__main__":
 
         # Save the model
         print("Saving model...")
-        torch.save(model.state_dict(), f"models/7002_test4_classifier_model_{epoch+1}.pth")
+        torch.save(model.state_dict(), f"models/ana_test1{epoch+1}.pth")
 
 # train_classification_model.py ends here

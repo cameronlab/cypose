@@ -75,13 +75,17 @@ class ClassificationComparer:
         """
         Loads the data from the given directory.
         """
+
+        # Define the header
+        header = ["frame", "x", "y", "class"]
+
         # Load csv files from the given directory
         # Find all CSV files that have 'ground_truth.csv' in their name
         csv_files = glob.glob(os.path.join(data_dir, "*ground_truth.csv"))
 
         # Read the first CSV file found
         if csv_files:
-            self.ground_truth = pd.read_csv(csv_files[0])
+            self.ground_truth = pd.read_csv(csv_files[0], names=header, header=0)
         else:
             print("No *ground_truth.csv file found")
 
@@ -90,7 +94,9 @@ class ClassificationComparer:
 
         # Read the first CSV file found
         if csv_files:
-            self.predicted = pd.read_csv(csv_files[0])
+            self.predicted = pd.read_csv(csv_files[0], names=header, header=0)
+            # Remove empty rows
+            self.predicted.dropna(inplace=True)
         else:
             print("No *predicted.csv file found")
 
@@ -110,8 +116,15 @@ class ClassificationComparer:
         """
         Generates a confusion matrix plot for the given ground truth and predictions.
         """
+        class_labels = [1,2,3,4]
+
+        # Map string labels to numeric labels
+        label_mapping = {label: idx for idx, label in enumerate(class_labels)}
+        numeric_ground_class = self.ground_class.map(label_mapping)
+        numeric_predicted_class = self.predicted_class.map(label_mapping)
+
         # Calculate confusion matrix
-        cm = confusion_matrix(self.ground_class, self.predicted_class)
+        cm = confusion_matrix(numeric_ground_class, numeric_predicted_class, labels=range(len(class_labels)))
 
         # Normalize confusion matrix
         cm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
@@ -120,6 +133,7 @@ class ClassificationComparer:
         class_labels = ['Cytoplasm', 'Carboxysome', 'WT', 'Procarboxysome']
 
         # Plot confusion matrix
+        print(cm)
         plt.figure(figsize=(10, 10))
         sns.heatmap(
             cm, annot=True, fmt=".3f", linewidths=0.5, square=True, cmap="Blues_r",
@@ -128,16 +142,16 @@ class ClassificationComparer:
         plt.ylabel("Actual label")
         plt.xlabel("Predicted label")
         plt.title("Confusion Matrix", size=15)
-        plt.show()
 
         # save confusion matrix as png
         plt.savefig(os.path.join(data_dir, "confusion_matrix.png"))
+        plt.show()
 
         # Metrics code taken from https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_score.html
 
 
 # Path to classification model ground truth and predicted csv files
-data_dir = "E:/ZachML/class_test"
+data_dir = "F:/Cypose/7002/7002Class/Comparison/"
 
 # Create an instance of the ClassificationComparer class
 comparer = ClassificationComparer(data_dir)
