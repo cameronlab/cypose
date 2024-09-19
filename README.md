@@ -44,3 +44,42 @@ To build a distributable package for your operating system, you'll need to insta
 pyinstaller --onefile run_segmentation.py
 ```
 This will create a single executable file in the *dist* folder. You can then run this executable from the command line with the same arguments as above. If you are on Windows, this will be an exe file, and if you are on Linux, this will be an ELF file. On Mac, this will be a DMG file that should work.
+
+# Project Directories
+
+``` bash
+anabaena/
+│
+├── .github/               
+│   ├── workflows/
+│   │   └── test.yml
+│   
+├── models/
+│   ├── 7002/
+│   └── 33047/
+│  
+├── src/
+│   ├── classification/
+│   │   ├── classification_comparisons_batch.py
+│   │   └── classification_comparisons.py
+│   │   
+│   ├── run_scripts/
+│   │   ├── run_classification.py
+│   │   └── run_segmentation.py
+│   │   
+│   ├── segmentation/
+│   │   └── segmentation_comparison.py
+│   │   
+│   ├── train_scripts/
+│   │   ├── train_segmentation.sh
+│   │   ├── train_cellpose.sbatch
+│   │   ├── train_classification_model_ana.py
+│   │   ├── train_classification_model.py
+│   │   └── train_cpc_classification_model.py
+│
+│   ├── .gitignore
+│   ├── env.yml
+│   ├── LICENSE
+│   ├── pyproject.toml
+│   └── README.md
+```
