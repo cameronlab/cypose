@@ -2,9 +2,12 @@
 
 | Commit | Author | Date | Summary | Changes |
 |--------|--------|------|---------|---------|
+| 4972ffc | Zach Maas | 2024-09-19 | Add benchmarking and training scripts for segmentation models | Added `benchmark_segmentation.sh`, `diff_masks.py`, `train_omnipose.sbatch` (131 insertions) |
+| 63a171c | Zach Maas | 2024-09-19 | Add FILE_HASHES file for data integrity | Added `FILE_HASHES` (1 insertion) |
+| 3d5d672 | Zach Maas | 2024-09-19 | Add size option and improve frame handling | Updated `CHANGELOG`, `README.md`, `run_segmentation.py`, `shell.nix`, `test_segmentation.sh` (102 insertions, 32 deletions) |
 | d96b3bd | Zach Maas | 2024-09-19 | Add training script | Added `train_cellpose.sbatch` (24 lines) |
 | 32f81a0 | Clair Huffine | 2024-09-14 | Updates on classifier processing | Updated 5 files, major additions to classification and segmentation scripts |
-| ff14312 | Zach Maas | 2024-08-20 | Add trained models for collaborators | Added multiple trained models (22 files) for reference. Note force push required from botched merge due to local branch being behind. |
+| ff14312 | Zach Maas | 2024-08-20 | Add trained models for collaborators | Added multiple trained models (22 files) for reference, force push required due to merge conflicts. Original date 2024-08-020, amended date 2024-09-09 |
 | 562de9b | Zach Maas | 2024-03-27 | HTML Formatting Fix | Minor README update |
 | 9122f90 | Zach Maas | 2024-03-27 | Small README update | Minor README change |
 | 902f0a0 | Zach Maas | 2024-03-27 | Update segmentation script and README | Major updates to segmentation script, README, and configuration files |
