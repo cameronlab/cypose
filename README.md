@@ -14,7 +14,6 @@ pip install nd2reader tifffile argparse cellpose tqdm numpy
 ```
 Alternatively (and likely easier on Windows), you can install these using conda:
 ```
-conda env create -f environment.yml
 conda install -c conda-forge nd2reader tifffile argparse cellpose tqdm numpy
 ```
 In some circumstances, you may need to install *pytorch* manually. You can do this using pip or conda to get proper GPU acceleration. See the [Pytorch website](https://pytorch.org/get-started/locally/) for more information.

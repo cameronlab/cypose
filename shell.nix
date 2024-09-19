@@ -16,6 +16,7 @@ pkgs.mkShell {
     pkgs.darwin.apple_sdk.frameworks.AVFoundation
     pkgs.xsimd
     pkgs.cairo
+    pkgs.git-cliff
   ];
   shellHook = ''
     # Update library paths

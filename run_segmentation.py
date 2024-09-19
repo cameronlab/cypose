@@ -95,6 +95,13 @@ parser.add_argument(
     help="Run denoising before segmentation",
 )
 parser.add_argument(
+    "--size",
+    metavar="size",
+    type=int,
+    nargs="?",
+    help="The expected size of the cells in pixels, used instead of size estimation model.",
+)
+parser.add_argument(
     "--niter",
     metavar="niter",
     type=int,
@@ -134,6 +141,7 @@ denoise_p = args.denoise  # denoise is a package, so denote as a prefix _p
 niter = args.niter
 flow_threshold = args.flow_threshold
 debug = args.debug
+size = args.size
 
 # Check for frame bounds
 try:
@@ -240,42 +248,42 @@ if file_type == "nd2":
 elif file_type == "tif":
     reader = tifffile.imread
 
+
+def get_movie_frame(movie, frame_idx: int):
+    """
+    Given a movie and a frame, load the frame from the movie
+    """
+    movie.bundle_axes = ["y", "x", "c"]
+    movie_frame = movie.get_frame(frame_idx)
+    return np.array(movie_frame, dtype=np.uint16)
+
+
 print(f"Reading input file {input_file}")
-size = None
 with reader(input_file) as images:
-    used_images = images[start_frame:end_frame]
-    print(
-        f"Running segmentation on {len(images[start_frame:end_frame])+1} frames"
-    )
+    if end_frame == -1:
+        end_frame = len(images)
+    # used_images = images[start_frame:end_frame]
+    print(f"Running segmentation on {end_frame - start_frame + 1} frames")
     # Run segmentation on all frames
     masks = []
     flows = []
     probs = []
     # Run on single core or GPU if available
     # TODO Fix to use minibatches
-    for i, image in tqdm(
-        enumerate(used_images),
+    for i in tqdm(
+        range(start_frame, end_frame + 1),
         desc="Frames",
         unit="frame",
-        total=len(used_images),
     ):
-        # pbar = tqdm(
-        #     enumerate(used_images),
-        #     desc="Frames",
-        #     unit="frame",
-        #     total=len(used_images),
-        # )
-        # for i in range(0, len(used_images), batch_size):
-        image = np.array(image)
-        # Grab array
-        # image = np.array(used_images[i : i + batch_size])
-        # Convert axis 0 to a list
-        # image = list(image[i, :, :] for i in range(image.shape[0]))
+        image = get_movie_frame(images, i)
         # image = np.array(image)
-        # Size estimation (do once)
-        # if size is None:
-        size, _ = size_model.eval(image, channels=chan)
-        # print(f"Size estimated as {size}")
+        if size is None:
+            size, size_style = size_model.eval(image, channels=chan)
+            print(f"Size estimated as {size} for frame {i}")
+            if size > 50:
+                print(
+                    f"WARNING: Size estimated as {size}, this is unusually large"
+                )
         # Denoising
         if denoise_p:
             image = denoise_model.eval(image, channels=chan)
@@ -288,10 +296,6 @@ with reader(input_file) as images:
             niter=niter,
             flow_threshold=flow_threshold,
         )
-        # for mask_i, flow_i in zip(mask, flow):
-        #     masks.append(mask_i)
-        #     flows.append(flow_i[0])
-        #     probs.append(flow_i[2])
         flows.append(flow[0])
         probs.append(flow[2])
         masks.append(mask)
