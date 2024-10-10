@@ -22,4 +22,4 @@
 | 3bee26d | Zach Maas | 2023-11-28 | Add LICENSE for scripts | Added LICENSE file |
 | c7ebdaa | Zach Maas | 2023-11-28 | Update documentation and argument parsing | Updated README and segmentation script |
 | 70b87ef | Zach Maas | 2023-11-28 | Add code and README for initial demonstration | Initial project setup with README, model, and scripts |
-| ba86f64 | Anton Avramov | 2023-10-10 | Uploaded better Anabaena 33047 segmentation model | Uploaded PCC 7002 segmentation model | Added script for cell counting |
+| ba86f64 | Anton Avramov | 2023-10-10 | Uploaded better Anabaena 33047 segmentation model | Uploaded PCC 7002 classification model | Added script for cell counting |
