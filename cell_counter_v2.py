@@ -28,7 +28,7 @@ class CellCounter:
     def count_cells(self):
         """Use multiprocessing to count the cells in the tif files."""
         # Get the list of tif files
-        tif_files = list(self.path.glob('*labeled.tif'))
+        tif_files = list(self.path.glob('*.tif'))
 
         # Time it
         start_time = time.time()
