@@ -36,6 +36,8 @@ python run_segmentation.py --input_file data/movie.nd2 --output_file results/seg
 ```
 This command will run segmentation on the frames 10 to 50 of *data/movie.nd2* using the 'cyto' model, and save the results as a TIFF stack in *results/segmented.tiff*. It will also save additional files with flows and probabilities for debugging purposes.
 
+The model output consists of a generated TIF file saved at the user specified location. The output file contains masks for each identified cell separated by integer level. For example, background is indicated by a 0 value, the first cell identified is identified with a 1 value in all pixels containing that cell, and so on for each identified cell. The base Cellpose framework structures output in this way to handle the condition where two segmented cells share a pixel on an edge, as if a single value was used for segmented cells, downstream analysis would treat those cells as merged into a single cell.
+
 ## Building a distributable binary
 
 To build a distributable package for your operating system, you'll need to install the dependencies listed above, as well as [pyinstaller](https://www.pyinstaller.org/). Note that you'll need to be on a windows system for this to work. Then, run the following command in the root directory of this repository:

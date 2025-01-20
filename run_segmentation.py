@@ -63,7 +63,7 @@ parser.add_argument(
     type=str,
     nargs=1,
     required=True,
-    help="The output file to save the segmentation to",
+    help="The output file to save the segmentation to. TIF output, each cell identified as a separate integer level.",
 )
 parser.add_argument(
     "--model",
