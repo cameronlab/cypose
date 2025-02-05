@@ -1,56 +1,48 @@
 import sys
 import os
 import subprocess
-
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QLineEdit, QFileDialog,
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QFileDialog,
     QDoubleSpinBox, QTextEdit, QCheckBox, QSpinBox
 )
+from PyQt6.QtCore import QThread, pyqtSignal
 
+"""
+TODO:
+1. Add docstrings for all classes and functions.
+2. Improve layout structure for better organization.
+3. Add a custom field to allow users to input additional training parameters.
+"""
 
-def run_script(train_folder, n_epochs, learning_rate=None, weight_decay=None, use_gpu=None, pretrained_model=None,
-               chan0=None, chan1=None, verbose=None, mask_filter=None, img_filter=None, mean_diameter=None,
-               batch_size=None):
-    """
-    Running the script.
-    """
-    if not train_folder or not str(n_epochs).isdigit():
-        return "Error: Please fill in all required fields."
+class ScriptRunner(QThread):
+    output_signal = pyqtSignal(str)
 
-    command = ["python3", "-m", "cellpose", "--dir", train_folder, "--n_epochs", str(n_epochs)]
-    if learning_rate:
-        command.extend(["--learning_rate", str(learning_rate)])
-    if weight_decay:
-        command.extend(["--weight_decay", str(weight_decay)])
-    if use_gpu:
-        command.append("--gpu")
-    if pretrained_model:
-        command.extend(["--pretrained_model", pretrained_model])
-    if chan0 is not None:
-        command.extend(["--chan0", str(chan0)])
-    if chan1 is not None:
-        command.extend(["--chan1", str(chan1)])
-    if verbose:
-        command.append("--verbose")
-    if mask_filter:
-        command.extend(["--mask_filter", mask_filter])
-    if img_filter:
-        command.extend(["--img_filter", img_filter])
-    if mean_diameter is not None:
-        command.extend(["--mean_diameter", str(mean_diameter)])
-    if batch_size is not None:
-        command.extend(["--batch_size", str(batch_size)])
+    def __init__(self, command):
+        super().__init__()
+        self.command = command
+        self.process = None
 
-    try:
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
-        return result.stdout
-    except subprocess.CalledProcessError as e:
-        return f"Error: {e.stderr}"
+    def run(self):
+        command_str = ' '.join(self.command)
+        print(f"Training using command: {command_str}")
+        self.process = subprocess.Popen(self.command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                        bufsize=1, universal_newlines=True)
+        for line in self.process.stdout:
+            self.output_signal.emit(line.strip())
+        self.process.stdout.close()
+        self.process.wait()
+
+    def stop(self):
+        if self.process:
+            self.process.terminate()
+            self.process.wait()
+            self.output_signal.emit("Process terminated.")
 
 
 class TrainingGUI(QWidget):
     def __init__(self):
         super().__init__()
+        self.script_thread = None
         self.initUI()
 
     def initUI(self):
@@ -90,22 +82,24 @@ class TrainingGUI(QWidget):
         self.wd_input.setSingleStep(0.0001)
         self.wd_input.setValue(0.0001)
 
-        # GPU Checkbox
+        # GPU and Verbose Checkboxes in a Horizontal Layout
         self.gpu_checkbox = QCheckBox("Use GPU")
-
-        # Channels
-        self.chan0_label = QLabel("Channel 0")
-        self.chan0_input = QSpinBox()
-        self.chan0_input.setRange(0, 5)
-        self.chan0_input.setValue(0)
-
-        self.chan1_label = QLabel("Channel 1")
-        self.chan1_input = QSpinBox()
-        self.chan1_input.setRange(0, 5)
-        self.chan1_input.setValue(0)
-
-        # Verbose Checkbox
         self.verbose_checkbox = QCheckBox("Verbose")
+        self.verbose_checkbox.setChecked(False)  # Ensure checkbox is visible and starts unchecked
+        gpu_verbose_layout = QHBoxLayout()
+        gpu_verbose_layout.addWidget(self.gpu_checkbox)
+        gpu_verbose_layout.addWidget(self.verbose_checkbox)
+
+        # Channel Inputs
+        self.chan_label = QLabel("Channel 0:")
+        self.chan_input = QSpinBox()
+        self.chan_input.setRange(0, 5)
+        self.chan_input.setValue(0)
+
+        self.chan2_label = QLabel("Channel 1:")
+        self.chan2_input = QSpinBox()
+        self.chan2_input.setRange(0, 5)
+        self.chan2_input.setValue(0)
 
         # Mask & Image Filters
         self.mask_filter_label = QLabel("Mask Filter:")
@@ -114,10 +108,10 @@ class TrainingGUI(QWidget):
         self.img_filter = QLineEdit()
 
         # Mean Diameter
-        self.mean_diameter_label = QLabel("Mean Diameter:")
-        self.mean_diameter = QSpinBox()
-        self.mean_diameter.setRange(1, 100)
-        self.mean_diameter.setValue(30)
+        self.diam_mean_label = QLabel("Mean Diameter:")
+        self.diam_mean = QSpinBox()
+        self.diam_mean.setRange(1, 100)
+        self.diam_mean.setValue(30)
 
         # Batch Size
         self.batch_size_label = QLabel("Batch Size:")
@@ -128,6 +122,11 @@ class TrainingGUI(QWidget):
         # Run Button
         self.run_button = QPushButton("Run")
         self.run_button.clicked.connect(self.run_process)
+
+        # Stop Button
+        self.stop_button = QPushButton("Stop")
+        self.stop_button.clicked.connect(self.stop_process)
+        self.stop_button.setEnabled(False)
 
         # Output Display
         self.output_display = QTextEdit()
@@ -140,17 +139,18 @@ class TrainingGUI(QWidget):
             self.model_label, self.model_file, self.model_button,
             self.lr_label, self.lr_input,
             self.wd_label, self.wd_input,
-            self.chan0_label, self.chan0_input,
-            self.chan1_label, self.chan1_input,
-            self.mean_diameter_label, self.mean_diameter,
+            self.chan_label, self.chan_input,
+            self.chan2_label, self.chan2_input,
+            self.diam_mean_label, self.diam_mean,
             self.batch_size_label, self.batch_size,
-            self.gpu_checkbox, self.verbose_checkbox,
             self.mask_filter_label, self.mask_filter,
             self.img_filter_label, self.img_filter,
-            self.run_button, self.output_display
+            self.run_button, self.stop_button, self.output_display
         ]
         for widget in widgets:
             layout.addWidget(widget)
+
+        layout.addLayout(gpu_verbose_layout)  # Add GPU and Verbose checkboxes horizontally
 
         self.setLayout(layout)
         self.setWindowTitle("Training Script GUI")
@@ -166,13 +166,47 @@ class TrainingGUI(QWidget):
             self.model_file.setText(file)
 
     def run_process(self):
-        result = run_script(
-            self.train_folder.text(), self.epochs_input.value(), self.lr_input.value(), self.wd_input.value(),
-            self.gpu_checkbox.isChecked(), self.model_file.text(), self.chan0_input.value(), self.chan1_input.value(),
-            self.verbose_checkbox.isChecked(), self.mask_filter.text(), self.img_filter.text(),
-            self.mean_diameter.value(), self.batch_size.value()
-        )
-        self.output_display.setText(result)
+        command = ["python", "-m", "cellpose", '--train', "--dir", self.train_folder.text(), "--n_epochs",
+                   str(self.epochs_input.value())]
+        if self.lr_input.value():
+            command.extend(["--learning_rate", str(self.lr_input.value())])
+        if self.wd_input.value():
+            command.extend(["--weight_decay", str(self.wd_input.value())])
+        if self.gpu_checkbox.isChecked():
+            command.append("--gpu")
+        if self.verbose_checkbox.isChecked():
+            command.append("--verbose")
+        if self.model_file.text():
+            command.extend(["--pretrained_model", self.model_file.text()])
+        if self.chan_input.value() or self.chan_input.value() == 0:
+            command.extend(["--chan", str(self.chan_input.value())])
+        if self.chan2_input.value() or self.chan2_input.value() == 0:
+            command.extend(["--chan2", str(self.chan2_input.value())])
+        if self.mask_filter.text():
+            command.extend(["--mask_filter", self.mask_filter.text()])
+        if self.img_filter.text():
+            command.extend(["--img_filter", self.img_filter.text()])
+        if self.diam_mean.value():
+            command.extend(["--diam_mean", str(self.diam_mean.value())])
+        if self.batch_size.value():
+            command.extend(["--batch_size", str(self.batch_size.value())])
+        if self.gpu_checkbox.isChecked():
+            command.append("--gpu")
+        if self.verbose_checkbox.isChecked():
+            command.append("--verbose")
+
+        self.script_thread = ScriptRunner(command)
+        self.script_thread.output_signal.connect(self.update_output)
+        self.script_thread.start()
+        self.stop_button.setEnabled(True)
+
+    def stop_process(self):
+        if self.script_thread:
+            self.script_thread.stop()
+            self.stop_button.setEnabled(False)
+
+    def update_output(self, text):
+        self.output_display.append(text)
 
 
 if __name__ == '__main__':
