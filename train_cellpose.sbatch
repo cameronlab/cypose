@@ -1,4 +1,4 @@
-ce-- v#!/bin/bash
+#!/bin/bash
 #SBATCH --output=/scratch/Users/zama8258/e_and_o/%x_%j.out
 #SBATCH --error=/scratch/Users/zama8258/e_and_o/%x_%j.err
 #SBATCH -p nvidia-a100
