@@ -392,6 +392,7 @@ class CyposeGUI(QTabWidget):
             command.extend(["--batch_size", str(self.batch_size.value())])
         if self.custom_params_input.text():
             command.extend(self.custom_params_input.text().split())
+        if self.batch_size.value():
             command.extend(["--batch_size", str(self.batch_size.value())])
         if self.gpu_checkbox.isChecked():
             command.append("--use_gpu")
