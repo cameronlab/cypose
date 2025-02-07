@@ -3,6 +3,8 @@
 | Commit | Author | Date | Summary | Changes |
 |--------|--------|------|---------|---------|
 
+
+| 2862fb6 | Anton Avramov | 2025-02-06 | Corrected the cyanobacteria name to meet industry standards in run_segmentation.py |
 | 2248a92 | Zach Maas | 2025-01-19 | Main repository documentation updates to reflect the segmentation script's output format. |
 | 451d3bd | Anton Avramov | 2025-01-16 | Renamed the models to reflect names in the manuscript, added cypose-scratch-7002 model |
 | de700db | Anton Avramov | 2025-01-16 | Reverted commits [c73b5ec, 2991927, 71cb502, fe49458, db44e03, bbe0937, 0460e63, 2691ca9] from 2025-01-16 due to file corruption. 
