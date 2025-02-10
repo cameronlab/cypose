@@ -1,2 +1,10 @@
 *.iml
 *.xml
+*.DS_Store
+.DS_Store
+*.tif
+*.txt
+.DS_Store
+__pycache__/run_segmentation.cpython-313.pyc
+*.nd2
+.DS_Store
