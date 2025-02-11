@@ -10,8 +10,8 @@
 #
 #
 # This file contains code to run cellpose segmentation on a tiff
-# movie, using our custom finetuned model that's adapted to 
-# Synechococcus sp. PCC 7002. This script is adapted to take in
+# movie, using our custom finetuned model that's adapted to [idk
+# cyanobacteria name spelling] 7002. This script is adapted to take in
 # a movie, convert the z-stack to single images as required by
 # cellpose, and then run segmentation. Output will then be coerced
 # from the cellpose output format (1 channel per cell) to a single
@@ -276,7 +276,11 @@ def nd2_seg(end_frame, size):
             #image = np.array(image)
             if size is None:
                 size, size_style = size_model.eval(image, channels=chan)
+<<<<<<< HEAD
                 print(f"\nSize estimated as {size} for frame {i}")
+=======
+                print(f"Size estimated as {size} for frame {i}")
+>>>>>>> a2ee43c (Bug fixes.)
                 if size > 50:
                     print(
                         f"WARNING: Size estimated as {size}, this is unusually large"
