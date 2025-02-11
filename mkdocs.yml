@@ -1,0 +1,17 @@
+site_name: CyPose Documentation
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - content.code.select
+markdown_extensions:
+  - admonition # For notes
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight: # For syntax highlighting
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
