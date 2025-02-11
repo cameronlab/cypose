@@ -276,7 +276,7 @@ def nd2_seg(end_frame, size):
             #image = np.array(image)
             if size is None:
                 size, size_style = size_model.eval(image, channels=chan)
-                print(f"Size estimated as {size} for frame {i}")
+                print(f"\nSize estimated as {size} for frame {i}")
                 if size > 50:
                     print(
                         f"WARNING: Size estimated as {size}, this is unusually large"
@@ -320,7 +320,7 @@ def tif_seg(end_frame, size):
         #image = np.array(image)
         if size is None:
             size, size_style = size_model.eval(image, channels=chan)
-            print(f"Size estimated as {size} for frame {i}")
+            print(f"\nSize estimated as {size} for frame {i}")
             if size > 50:
                 print(
                     f"WARNING: Size estimated as {size}, this is unusually large"

@@ -414,7 +414,7 @@ class CyposeGUI(QTabWidget):
         command_str = ' '.join(map(str, command))
 
         # Create log file and timestamp
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
         self.t_log_file = f"./{self.t_log_dir}/training_log_{timestamp}.txt"
 
         # Print the command
@@ -429,12 +429,13 @@ class CyposeGUI(QTabWidget):
         """Construct and execute the training command based on user inputs."""
 
         # Create log file and timestamp
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
         self.s_log_file = f"./{self.s_log_dir}/training_log_{timestamp}.txt"
 
         command = ["python", "run_segmentation.py", "--model", self.s_model_file.text(),
                    "--input_file", self.s_image_file.text(), "--output_file",
-                   f"{self.s_output_dir.text()}/{os.path.basename(self.s_image_file.text())[:-3]}_mask_{timestamp}.tif"]
+                   f"{self.s_output_dir.text()}/{os.path.splitext(os.path.basename(self.s_image_file.text()))[0]}"
+                   f"_mask_{timestamp}.tif"]
 
         if self.s_flow_th_input.text():
             command.extend(["--flow_threshold", self.s_flow_th_input.text()])
