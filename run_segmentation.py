@@ -313,10 +313,10 @@ def tif_seg(end_frame, size):
         unit="frame",
     ):
         image = get_movie_frame(images, i)
-        #image = image[1, :, :]
+        image = image[0, :, :]
         #image = np.moveaxis(image, 0, -1)
 
-        print(image.shape)
+        #print(image.shape)
         #image = np.array(image)
         if size is None:
             size, size_style = size_model.eval(image, channels=chan)
