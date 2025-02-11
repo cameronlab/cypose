@@ -26,7 +26,7 @@ set -euxo pipefail
 # data="$root_dir/channelred,gfp,cy5,rfp,bfp_seq0000_0003.nd2"
 root_dir="/Users/zachmaas/Desktop/AnaFiles/"
 data="$root_dir/20210709_Ana_-N_to_-N_channelbf,cy5,cfp,rfp_seq0000_0001.nd2"
-# python run_segmentation.py \
+# python run_segmentation_backup.py \
 		# 			 --input_file "$data" \
 		# 			 --output_file "$root_dir/masks_ours.tif" --gpu \
 		# 			 --model ../models/7002_CAH_Default

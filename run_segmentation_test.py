@@ -1,6 +1,6 @@
-# run_segmentation.py --- Run segmentation on a tiff movie
+# run_segmentation_backup.py --- Run segmentation on a tiff movie
 #
-# Filename: run_segmentation.py
+# Filename: run_segmentation_backup.py
 # Author: Zach Maas
 # Created: Tue Nov 14 10:23:24 2023 (-0700)
 #
@@ -364,4 +364,4 @@ if debug:
 
 
 #
-# run_segmentation.py ends here
+# run_segmentation_backup.py ends here

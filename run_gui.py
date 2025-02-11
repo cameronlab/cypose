@@ -252,23 +252,18 @@ class CyposeGUI(QTabWidget):
 
         # Flow_threshold
         self.s_flow_th_label = QLabel("Flow Threshold:")
-        self.s_flow_th_input = QDoubleSpinBox()
-        self.s_flow_th_input.setDecimals(2)
-        self.s_flow_th_input.setRange(0, 1)
-        self.s_flow_th_input.setSingleStep(0.01)
-        self.s_flow_th_input.setValue(0.75)
+        self.s_flow_th_input = QLineEdit()
+        self.s_flow_th_input.setText(None)
 
         # Num iterations
         self.niter_label = QLabel("Iteration:")
-        self.niter_input = QSpinBox()
-        self.niter_input.setRange(0, 3000)
-        self.niter_input.setValue(1000)
+        self.niter_input = QLineEdit()
+        self.niter_input.setText(None)
 
         # Size
         self.size_label = QLabel("Cell Size:")
-        self.size_input = QSpinBox()
-        self.size_input.setRange(0, 50)
-        self.size_input.setValue(0)
+        self.size_input = QLineEdit()
+        self.size_input.setText(None)
 
         # Start Frame
         self.start_frame_label = QLabel("Start Frame:")
