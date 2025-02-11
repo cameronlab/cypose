@@ -10,8 +10,8 @@
 #
 #
 # This file contains code to run cellpose segmentation on a tiff
-# movie, using our custom finetuned model that's adapted to 
-# Synechococcus sp. PCC 7002. This script is adapted to take in
+# movie, using our custom finetuned model that's adapted to [idk
+# cyanobacteria name spelling] 7002. This script is adapted to take in
 # a movie, convert the z-stack to single images as required by
 # cellpose, and then run segmentation. Output will then be coerced
 # from the cellpose output format (1 channel per cell) to a single
@@ -63,7 +63,7 @@ parser.add_argument(
     type=str,
     nargs=1,
     required=True,
-    help="The output file to save the segmentation to. TIF output, each cell identified as a separate integer level.",
+    help="The output file to save the segmentation to",
 )
 parser.add_argument(
     "--model",
@@ -93,13 +93,6 @@ parser.add_argument(
     "--denoise",
     action=argparse.BooleanOptionalAction,
     help="Run denoising before segmentation",
-)
-parser.add_argument(
-    "--size",
-    metavar="size",
-    type=int,
-    nargs="?",
-    help="The expected size of the cells in pixels, used instead of size estimation model.",
 )
 parser.add_argument(
     "--niter",
@@ -141,7 +134,6 @@ denoise_p = args.denoise  # denoise is a package, so denote as a prefix _p
 niter = args.niter
 flow_threshold = args.flow_threshold
 debug = args.debug
-size = args.size
 
 # Check for frame bounds
 try:
@@ -242,49 +234,49 @@ if denoise_p:
         device=device, model_type="denoise_cyto3"
     )
 
-
 # Select the file reader
 if file_type == "nd2":
     reader = ND2Reader
 elif file_type == "tif":
     reader = tifffile.imread
 
-
-def get_movie_frame(movie, frame_idx: int):
-    """
-    Given a movie and a frame, load the frame from the movie
-    """
-    movie.bundle_axes = ["y", "x", "c"]
-    movie_frame = movie.get_frame(frame_idx)
-    return np.array(movie_frame, dtype=np.uint16)
-
-
 print(f"Reading input file {input_file}")
+size = None
 with reader(input_file) as images:
-    if end_frame == -1:
-        end_frame = len(images)
-    # used_images = images[start_frame:end_frame]
-    print(f"Running segmentation on {end_frame - start_frame + 1} frames")
+    used_images = images[start_frame:end_frame]
+    print(
+        f"Running segmentation on {len(images[start_frame:end_frame])+1} frames"
+    )
     # Run segmentation on all frames
     masks = []
     flows = []
     probs = []
     # Run on single core or GPU if available
     # TODO Fix to use minibatches
-    for i in tqdm(
-        range(start_frame, end_frame + 1),
+    for i, image in tqdm(
+        enumerate(used_images),
         desc="Frames",
         unit="frame",
+        total=len(used_images),
     ):
-        image = get_movie_frame(images, i)
+        # pbar = tqdm(
+        #     enumerate(used_images),
+        #     desc="Frames",
+        #     unit="frame",
+        #     total=len(used_images),
+        # )
+        # for i in range(0, len(used_images), batch_size):
+        image = np.array(image)
+        print(image.shape)
+        # Grab array
+        # image = np.array(used_images[i : i + batch_size])
+        # Convert axis 0 to a list
+        # image = list(image[i, :, :] for i in range(image.shape[0]))
         # image = np.array(image)
-        if size is None:
-            size, _ = size_model.eval(image, channels=chan)
-            print(f"Size estimated as {size} for frame {i}")
-            if size > 50:
-                print(
-                    f"WARNING: Size estimated as {size}, this is unusually large"
-                )
+        # Size estimation (do once)
+        # if size is None:
+        size, _ = size_model.eval(image, channels=chan)
+        # print(f"Size estimated as {size}")
         # Denoising
         if denoise_p:
             image = denoise_model.eval(image, channels=chan)
@@ -297,6 +289,10 @@ with reader(input_file) as images:
             niter=niter,
             flow_threshold=flow_threshold,
         )
+        # for mask_i, flow_i in zip(mask, flow):
+        #     masks.append(mask_i)
+        #     flows.append(flow_i[0])
+        #     probs.append(flow_i[2])
         flows.append(flow[0])
         probs.append(flow[2])
         masks.append(mask)

@@ -204,10 +204,10 @@ if os.path.exists(model_name):
     # Check if model has 2 channels in string name
     if "2ch" in model_name:
         print(f"Using 2 channel model {model_name}")
-        chan = [0, 1]
+        chan = [1, 2]
     else:
         print(f"Using 1 channel model {model_name}")
-        chan = [0, 0]
+        chan = [1, 0]
 
     # Load the model
     print(f"Loading model {model_name}")
@@ -313,7 +313,9 @@ def tif_seg(end_frame, size):
         unit="frame",
     ):
         image = get_movie_frame(images, i)
-        image = image[0, :, :]
+        #image = image[1, :, :]
+        #image = np.moveaxis(image, 0, -1)
+
         print(image.shape)
         #image = np.array(image)
         if size is None:
