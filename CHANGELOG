@@ -3,7 +3,8 @@
 | Commit | Author | Date | Summary | Changes |
 |--------|--------|------|---------|---------|
 
-
+| e83b8f5 | Anton Avramov | 2025-02-06 | Bug fixes |
+| a2ee43c | Anton Avramov | 2025-02-06 | Flatten image for cellpose model to segment the frame. Fixed .tif handling routines |
 | 2862fb6 | Anton Avramov | 2025-02-06 | Corrected the cyanobacteria name to meet industry standards in run_segmentation.py |
 | 2248a92 | Zach Maas | 2025-01-19 | Main repository documentation updates to reflect the segmentation script's output format. |
 | 451d3bd | Anton Avramov | 2025-01-16 | Renamed the models to reflect names in the manuscript, added cypose-scratch-7002 model |

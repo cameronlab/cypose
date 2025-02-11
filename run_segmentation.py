@@ -204,7 +204,7 @@ if os.path.exists(model_name):
     # Check if model has 2 channels in string name
     if "2ch" in model_name:
         print(f"Using 2 channel model {model_name}")
-        chan = [1, 2]
+        chan = [0, 1]
     else:
         print(f"Using 1 channel model {model_name}")
         chan = [1, 0]
