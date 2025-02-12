@@ -1,0 +1,7 @@
+*.tif
+*.txt
+.DS_Store
+*.nd2
+*.sbatch
+*.xml
+*.iml
