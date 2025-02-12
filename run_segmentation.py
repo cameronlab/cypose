@@ -36,7 +36,6 @@
 # Code:
 
 from nd2reader import ND2Reader  # ND2 file reading
-from skimage import io
 import tifffile  # Tiff file writing
 import argparse  # Command line arguments
 from cellpose import models  # Cellpose
@@ -45,11 +44,6 @@ from tqdm import tqdm  # Progress bar
 import numpy as np
 import torch
 import os
-
-# Constants
-
-ONE_CHANNEL = [0, 0]
-TWO_CHANNEL = [1, 2]
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description="Run segmentation on a movie")
@@ -68,7 +62,7 @@ parser.add_argument(
     type=str,
     nargs=1,
     required=True,
-    help="The output file to save the segmentation to. TIF output, each cell identified as a separate integer level.",
+    help="The output file to save the segmentation to",
 )
 parser.add_argument(
     "--model",
@@ -98,13 +92,6 @@ parser.add_argument(
     "--denoise",
     action=argparse.BooleanOptionalAction,
     help="Run denoising before segmentation",
-)
-parser.add_argument(
-    "--size",
-    metavar="size",
-    type=int,
-    nargs="?",
-    help="The expected size of the cells in pixels, used instead of size estimation model.",
 )
 parser.add_argument(
     "--niter",
@@ -146,7 +133,6 @@ denoise_p = args.denoise  # denoise is a package, so denote as a prefix _p
 niter = args.niter
 flow_threshold = args.flow_threshold
 debug = args.debug
-size = args.size
 
 # Check for frame bounds
 try:
@@ -209,10 +195,10 @@ if os.path.exists(model_name):
     # Check if model has 2 channels in string name
     if "2ch" in model_name:
         print(f"Using 2 channel model {model_name}")
-        chan = TWO_CHANNEL
+        chan = [0, 1]
     else:
         print(f"Using 1 channel model {model_name}")
-        chan = ONE_CHANNEL
+        chan = [0, 0]
 
     # Load the model
     print(f"Loading model {model_name}")
@@ -247,95 +233,49 @@ if denoise_p:
         device=device, model_type="denoise_cyto3"
     )
 
-def get_movie_frame(movie, frame_idx: int):
-    """
-    Given a movie and a frame, load the frame from the movie
-    """
-    if hasattr(movie, "bundle_axes"):
-        movie.bundle_axes = ["c", "y", "x"]
-        movie_frame = movie.get_frame(frame_idx)
-    else:
-        movie_frame = movie[frame_idx, :, :, :]
-    return np.array(movie_frame, dtype=np.uint16)
-
-# Run segmentation on all frames
-masks = []
-flows = []
-probs = []
+# Select the file reader
+if file_type == "nd2":
+    reader = ND2Reader
+elif file_type == "tif":
+    reader = tifffile.imread
 
 print(f"Reading input file {input_file}")
-
-def nd2_seg(end_frame, size):
-    reader = ND2Reader
-    with reader(input_file) as images:
-        if end_frame == -1:
-            end_frame = len(images)
-        print(f"Running segmentation on {end_frame - start_frame} frames")
-        for i in tqdm(
-            range(start_frame, end_frame),
-            desc="Frames",
-            unit="frame",
-        ):
-            image = get_movie_frame(images, i)
-
-            if chan == TWO_CHANNEL:
-                BF_channel = image[1, :, :]  # Bright field
-                Cy5_channel = image[2, :, :]  # Cy5
-                image = np.stack([BF_channel, Cy5_channel], axis=-1)
-            elif chan == ONE_CHANNEL:
-                image = image[0, :, :]
-
-            if size is None:
-                size, size_style = size_model.eval(image, channels=chan)
-                print(f"\nSize estimated as {size} for frame {i}")
-                if size > 50:
-                    print(
-                        f"WARNING: Size estimated as {size}, this is unusually large"
-                    )
-            # Denoising
-            if denoise_p:
-                image = denoise_model.eval(image, channels=chan)
-            # Speed up with tile=False, uses more memory
-            mask, flow, _ = model.eval(
-                image,
-                diameter=size,
-                channels=chan,
-                niter=niter,
-                flow_threshold=flow_threshold,
-            )
-            flows.append(flow[0])
-            probs.append(flow[2])
-            masks.append(mask)
-
-def tif_seg(end_frame, size):
-    images = tifffile.imread(input_file)
-
-    if end_frame == -1:
-        end_frame = len(images)
-    print(f"Running segmentation on {end_frame - start_frame} frames")
-
+size = None
+with reader(input_file) as images:
+    used_images = images[start_frame:end_frame]
+    print(
+        f"Running segmentation on {len(images[start_frame:end_frame])+1} frames"
+    )
+    # Run segmentation on all frames
+    masks = []
+    flows = []
+    probs = []
     # Run on single core or GPU if available
     # TODO Fix to use minibatches
-    for i in tqdm(
-        range(start_frame, end_frame),
+    for i, image in tqdm(
+        enumerate(used_images),
         desc="Frames",
         unit="frame",
+        total=len(used_images),
     ):
-        image = get_movie_frame(images, i)
-        if chan == TWO_CHANNEL:
-            BF_channel = image[1, :, :]  # Brightfield
-            Cy5_channel = image[2, :, :]   # Cy5
-            image = np.stack([BF_channel, Cy5_channel], axis=-1)
-        elif chan == ONE_CHANNEL:
-            image = image[0, :, :]
-
-        if size is None:
-            size, size_style = size_model.eval(image, channels=chan)
-            print(f"\nSize estimated as {size} for frame {i}")
-            if size > 50:
-                print(
-                    f"WARNING: Size estimated as {size}, this is unusually large"
-                )
+        # pbar = tqdm(
+        #     enumerate(used_images),
+        #     desc="Frames",
+        #     unit="frame",
+        #     total=len(used_images),
+        # )
+        # for i in range(0, len(used_images), batch_size):
+        image = np.array(image)
+        print(image.shape)
+        # Grab array
+        # image = np.array(used_images[i : i + batch_size])
+        # Convert axis 0 to a list
+        # image = list(image[i, :, :] for i in range(image.shape[0]))
+        # image = np.array(image)
+        # Size estimation (do once)
+        # if size is None:
+        size, _ = size_model.eval(image, channels=chan)
+        # print(f"Size estimated as {size}")
         # Denoising
         if denoise_p:
             image = denoise_model.eval(image, channels=chan)
@@ -344,39 +284,37 @@ def tif_seg(end_frame, size):
             image,
             diameter=size,
             channels=chan,
-            #tile=True, # enabled by default in newer cellpose
+            #tile=True,
             niter=niter,
             flow_threshold=flow_threshold,
         )
+        # for mask_i, flow_i in zip(mask, flow):
+        #     masks.append(mask_i)
+        #     flows.append(flow_i[0])
+        #     probs.append(flow_i[2])
         flows.append(flow[0])
         probs.append(flow[2])
         masks.append(mask)
 
-
-if file_type == "nd2":
-    nd2_seg(end_frame, size)
-elif file_type == "tif":
-    tif_seg(end_frame, size)
-
-# Stack the masks
-masks = np.stack(masks)
-# Save the mask
-print(f"Saving to {output_file}")
-# Coerce to single channel
-
-# Manually save the masks
-tifffile.imwrite(output_file, masks)
-if debug:
-    print("Saving debug files")
-    flows = np.stack(flows)
-    # Save the flows
-    flow_file = output_file + ".flow.tif"
-    print(f"Saving flows to {flow_file}")
-    tifffile.imwrite(flow_file, flows, bigtiff=True)
-    # Save the probs
-    prob_file = output_file + ".prob.tif"
-    print(f"Saving probs to {prob_file}")
-    tifffile.imwrite(prob_file, probs, bigtiff=True)
+    # Stack the masks
+    masks = np.stack(masks)
+    # Save the mask
+    print(f"Saving to {output_file}")
+    # Coerce to single channel
+    # masks = np.clip(masks, 0, 1)
+    # Manually save the masks
+    tifffile.imwrite(output_file, masks)
+    if debug:
+        print("Saving debug files")
+        flows = np.stack(flows)
+        # Save the flows
+        flow_file = output_file + ".flow.tif"
+        print(f"Saving flows to {flow_file}")
+        tifffile.imwrite(flow_file, flows, bigtiff=True)
+        # Save the probs
+        prob_file = output_file + ".prob.tif"
+        print(f"Saving probs to {prob_file}")
+        tifffile.imwrite(prob_file, probs, bigtiff=True)
 
 
 #
