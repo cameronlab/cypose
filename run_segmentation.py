@@ -46,6 +46,11 @@ import numpy as np
 import torch
 import os
 
+# Constants
+
+ONE_CHANNEL = [0, 0]
+TWO_CHANNEL = [1, 2]
+
 # Parse command line arguments
 parser = argparse.ArgumentParser(description="Run segmentation on a movie")
 # Standard flags
@@ -204,10 +209,10 @@ if os.path.exists(model_name):
     # Check if model has 2 channels in string name
     if "2ch" in model_name:
         print(f"Using 2 channel model {model_name}")
-        chan = [0, 1]
+        chan = TWO_CHANNEL
     else:
         print(f"Using 1 channel model {model_name}")
-        chan = [1, 0]
+        chan = ONE_CHANNEL
 
     # Load the model
     print(f"Loading model {model_name}")
@@ -247,10 +252,10 @@ def get_movie_frame(movie, frame_idx: int):
     Given a movie and a frame, load the frame from the movie
     """
     if hasattr(movie, "bundle_axes"):
-        movie.bundle_axes = ["y", "x"]
+        movie.bundle_axes = ["c", "y", "x"]
         movie_frame = movie.get_frame(frame_idx)
     else:
-        movie_frame = movie[frame_idx]
+        movie_frame = movie[frame_idx, :, :, :]
     return np.array(movie_frame, dtype=np.uint16)
 
 # Run segmentation on all frames
@@ -273,14 +278,16 @@ def nd2_seg(end_frame, size):
         ):
             image = get_movie_frame(images, i)
 
-            #image = np.array(image)
+            if chan == TWO_CHANNEL:
+                BF_channel = image[1, :, :]  # Bright field
+                Cy5_channel = image[2, :, :]  # Cy5
+                image = np.stack([BF_channel, Cy5_channel], axis=-1)
+            elif chan == ONE_CHANNEL:
+                image = image[0, :, :]
+
             if size is None:
                 size, size_style = size_model.eval(image, channels=chan)
-<<<<<<< HEAD
                 print(f"\nSize estimated as {size} for frame {i}")
-=======
-                print(f"Size estimated as {size} for frame {i}")
->>>>>>> a2ee43c (Bug fixes.)
                 if size > 50:
                     print(
                         f"WARNING: Size estimated as {size}, this is unusually large"
@@ -293,7 +300,6 @@ def nd2_seg(end_frame, size):
                 image,
                 diameter=size,
                 channels=chan,
-                #tile=True, # enabled by default in newer cellpose
                 niter=niter,
                 flow_threshold=flow_threshold,
             )
@@ -303,7 +309,6 @@ def nd2_seg(end_frame, size):
 
 def tif_seg(end_frame, size):
     images = tifffile.imread(input_file)
-    print(images.shape)
 
     if end_frame == -1:
         end_frame = len(images)
@@ -317,11 +322,13 @@ def tif_seg(end_frame, size):
         unit="frame",
     ):
         image = get_movie_frame(images, i)
-        image = image[0, :, :]
-        #image = np.moveaxis(image, 0, -1)
+        if chan == TWO_CHANNEL:
+            BF_channel = image[1, :, :]  # Brightfield
+            Cy5_channel = image[2, :, :]   # Cy5
+            image = np.stack([BF_channel, Cy5_channel], axis=-1)
+        elif chan == ONE_CHANNEL:
+            image = image[0, :, :]
 
-        #print(image.shape)
-        #image = np.array(image)
         if size is None:
             size, size_style = size_model.eval(image, channels=chan)
             print(f"\nSize estimated as {size} for frame {i}")
