@@ -5,22 +5,30 @@
 </p>
 
 ## Description
-This script is designed to run segmentation on a cyanobacteria movie using the [Cellpose](https://github.com/MouseLand/cellpose) model. It reads an ND2 file, applies the specified model for segmentation, and saves the results as a TIFF stack. Included in this repository is our recommended model for segmentation of *Synechococcus sp.* Strain PCC 7002, finetuned from the base cellpose model. This model is saved in the *models* folder.
+This toolkit is designed to run segmentation and training on a cyanobacteria movie using the [Cellpose](https://github.com/MouseLand/cellpose) model. It reads an ND2 and TIFF file, applies the specified model for segmentation, and saves the results as a TIFF stack. Included in this repository is our recommended model for segmentation of *Synechococcus sp.*  PCC 7002, finetuned from the base cellpose model. This model is saved in the *models* folder.
 
 ## Installation Instructions
-To use this script, you need to have Python installed along with the following packages: *nd2reader*, *tifffile*, *argparse*, *cellpose*, *tqdm*, and *numpy*. You can install these using pip:
+To use this script, you need to have Python installed along with the following packages: *nd2reader*, *torch*, *scikit-image*, *tifffile*, *argparse*, *cellpose*, *tqdm*, *numpy* and *PyQT6*. You can install these using pip:
 ```bash
-pip install nd2reader tifffile argparse cellpose tqdm numpy
+pip install nd2reader torch scikit-image tifffile argparse cellpose tqdm numpy PyQT6
 ```
 Alternatively (and likely easier on Windows), you can install these using conda:
 ```
-conda install -c conda-forge nd2reader tifffile argparse cellpose tqdm numpy
+conda install -c conda-forge nd2reader torch scikit-image tifffile argparse cellpose tqdm numpy PyQT6
 ```
 In some circumstances, you may need to install *pytorch* manually. You can do this using pip or conda to get proper GPU acceleration. See the [Pytorch website](https://pytorch.org/get-started/locally/) for more information.
 ## Execution Instructions
+
+1) If you would like to use GUI for segmenting and training use the command below. GUI script doesn't require passing extra parameters. After GUI interface has loaded select the correct tab for your task and fill required fields.
+```bash
+python run_gui.py
+```
+If GUI is used the folder for segmenting and training logs will be created and will contain all output from each run.
+
+2) To use terminal commands
 To run the script, use the following command in your terminal:
 ```bash
-python run_segmentation_backup.py --input_file input.nd2 --output_file output.tiff --model model_name [--gpu] [--start_frame frame_number] [--end_frame frame_number] [--debug]
+python run_segmentation.py --input_file input.nd2 --output_file output.tiff --model model_name [--gpu] [--start_frame frame_number] [--end_frame frame_number] [--debug]
 ```
 Replace *input.nd2* with the path to your input ND2 file, *output.tiff* with the desired output TIFF file name, and *model_name* with the path of the model you want to use. The script will run segmentation on all frames (or a specified subset) of the input file and save the results as a TIFF stack.
 
@@ -32,7 +40,7 @@ Optional arguments:
 
 Example usage:
 ```bash
-python run_segmentation_backup.py --input_file data/movie.nd2 --output_file results/segmented.tiff --model models/7002_CAH_default --gpu --start_frame 10 --end_frame 50 --debug
+python run_segmentation.py --input_file data/movie.nd2 --output_file results/segmented.tiff --model models/7002_CAH_default --gpu --start_frame 10 --end_frame 50 --debug
 ```
 This command will run segmentation on the frames 10 to 50 of *data/movie.nd2* using the 'cyto' model, and save the results as a TIFF stack in *results/segmented.tiff*. It will also save additional files with flows and probabilities for debugging purposes.
 
@@ -42,6 +50,6 @@ The model output consists of a generated TIF file saved at the user specified lo
 
 To build a distributable package for your operating system, you'll need to install the dependencies listed above, as well as [pyinstaller](https://www.pyinstaller.org/). Note that you'll need to be on a windows system for this to work. Then, run the following command in the root directory of this repository:
 ```bash
-pyinstaller --onefile run_segmentation_backup.py
+pyinstaller --onefile run_segmentation.py
 ```
 This will create a single executable file in the *dist* folder. You can then run this executable from the command line with the same arguments as above. If you are on Windows, this will be an exe file, and if you are on Linux, this will be an ELF file. On Mac, this will be a DMG file that should work.
