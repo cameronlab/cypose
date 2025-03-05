@@ -1,7 +1,7 @@
 # run_segmentation.py --- Run segmentation on a tiff movie
 #
 # Filename: run_segmentation.py
-# Author: Zach Maas
+# Author: Zach Maas and Anton Avramov
 # Created: Tue Nov 14 10:23:24 2023 (-0700)
 #
 #
@@ -10,7 +10,8 @@
 #
 #
 # This file contains code to run cellpose segmentation on a tiff
-# movie, using our custom finetuned model that's adapted to
+
+# movie, using our custom fine-tuned model that's adapted to
 # Synechococcus sp. PCC 7002. This script is adapted to take in
 # a movie, convert the z-stack to single images as required by
 # cellpose, and then run segmentation. Output will then be coerced
@@ -36,7 +37,6 @@
 # Code:
 
 from nd2reader import ND2Reader  # ND2 file reading
-from skimage import io
 import tifffile  # Tiff file writing
 import argparse  # Command line arguments
 from cellpose import models  # Cellpose
@@ -63,7 +63,7 @@ parser.add_argument(
     type=str,
     nargs=1,
     required=True,
-    help="The output file to save the segmentation to. TIF output, each cell identified as a separate integer level.",
+    help="The output file to save the segmentation to",
 )
 parser.add_argument(
     "--model",
@@ -93,13 +93,6 @@ parser.add_argument(
     "--denoise",
     action=argparse.BooleanOptionalAction,
     help="Run denoising before segmentation",
-)
-parser.add_argument(
-    "--size",
-    metavar="size",
-    type=int,
-    nargs="?",
-    help="The expected size of the cells in pixels, used instead of size estimation model.",
 )
 parser.add_argument(
     "--niter",
@@ -141,7 +134,6 @@ denoise_p = args.denoise  # denoise is a package, so denote as a prefix _p
 niter = args.niter
 flow_threshold = args.flow_threshold
 debug = args.debug
-size = args.size
 
 # Check for frame bounds
 try:
@@ -311,6 +303,7 @@ def tif_seg(end_frame, size):
         range(start_frame, end_frame),
         desc="Frames",
         unit="frame",
+        total=len(images),
     ):
         image = get_movie_frame(images, i)
         image = image[0, :, :]
@@ -370,3 +363,4 @@ if debug:
 
 #
 # run_segmentation.py ends here
+
