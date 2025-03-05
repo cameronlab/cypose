@@ -12,7 +12,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 """
 TODO:
 1. Add docstrings for all classes and functions.
-2. Fill segmenting tab with correct widgets
+2. Move segmentation and training into separate classes
 3. Plot loss curve
 4. Check if the loss not decreasing and terminate the process. 
 """
