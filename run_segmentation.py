@@ -1,7 +1,7 @@
 # run_segmentation.py --- Run segmentation on a tiff movie
 #
 # Filename: run_segmentation.py
-# Author: Zach Maas
+# Author: Zach Maas and Anton Avramov
 # Created: Tue Nov 14 10:23:24 2023 (-0700)
 #
 #
@@ -10,7 +10,7 @@
 #
 #
 # This file contains code to run cellpose segmentation on a tiff
-# movie, using our custom finetuned model that's adapted to
+# movie, using our custom fine-tuned model that's adapted to
 # Synechococcus sp. PCC 7002. This script is adapted to take in
 # a movie, convert the z-stack to single images as required by
 # cellpose, and then run segmentation. Output will then be coerced
@@ -299,7 +299,7 @@ def nd2_seg(end_frame, size):
 
 def tif_seg(end_frame, size):
     images = tifffile.imread(input_file)
-    print(images.shape)
+    #print(images.shape)
 
     if end_frame == -1:
         end_frame = len(images)
