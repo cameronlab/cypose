@@ -5,3 +5,5 @@
 *.sbatch
 *.xml
 *.iml
+run_segmentation_old.py
+run_segmentation_backup.py
