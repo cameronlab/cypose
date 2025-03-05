@@ -5,19 +5,27 @@
 </p>
 
 ## Description
-This script is designed to run segmentation on a cyanobacteria movie using the [Cellpose](https://github.com/MouseLand/cellpose) model. It reads an ND2 file, applies the specified model for segmentation, and saves the results as a TIFF stack. Included in this repository is our recommended model for segmentation of *Synechococcus sp.* Strain PCC 7002, finetuned from the base cellpose model. This model is saved in the *models* folder.
+This toolkit is designed to run segmentation and training on a cyanobacteria movie using the [Cellpose](https://github.com/MouseLand/cellpose) model. It reads an ND2 and TIFF file, applies the specified model for segmentation, and saves the results as a TIFF stack. Included in this repository is our recommended model for segmentation of *Synechococcus sp.*  PCC 7002, finetuned from the base cellpose model. This model is saved in the *models* folder.
 
 ## Installation Instructions
-To use this script, you need to have Python installed along with the following packages: *nd2reader*, *tifffile*, *argparse*, *cellpose*, *tqdm*, and *numpy*. You can install these using pip:
+To use this script, you need to have Python installed along with the following packages: *nd2reader*, *torch*, *scikit-image*, *tifffile*, *argparse*, *cellpose*, *tqdm*, *numpy* and *PyQT6*. You can install these using pip:
 ```bash
-pip install nd2reader tifffile argparse cellpose tqdm numpy
+pip install nd2reader torch scikit-image tifffile argparse cellpose tqdm numpy PyQT6
 ```
 Alternatively (and likely easier on Windows), you can install these using conda:
 ```
-conda install -c conda-forge nd2reader tifffile argparse cellpose tqdm numpy
+conda install -c conda-forge nd2reader torch scikit-image tifffile argparse cellpose tqdm numpy PyQT6
 ```
 In some circumstances, you may need to install *pytorch* manually. You can do this using pip or conda to get proper GPU acceleration. See the [Pytorch website](https://pytorch.org/get-started/locally/) for more information.
 ## Execution Instructions
+
+1) If you would like to use GUI for segmenting and training use the command below. GUI script doesn't require passing extra parameters. After GUI interface has loaded select the correct tab for your task and fill required fields.
+```bash
+python run_gui.py
+```
+If GUI is used the folder for segmenting and training logs will be created and will contain all output from each run.
+
+2) To use terminal commands
 To run the script, use the following command in your terminal:
 ```bash
 python run_segmentation.py --input_file input.nd2 --output_file output.tiff --model model_name [--gpu] [--start_frame frame_number] [--end_frame frame_number] [--debug]
