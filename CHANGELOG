@@ -3,6 +3,7 @@
 | Commit | Author | Date | Summary | Changes |
 |--------|--------|------|---------|---------|
 
+| b262bca | Anton Avramov | 2025-03-05 | Added GUI, fixed channel handling, fixed bugs, updated README, fixed docs. |
 | e83b8f5 | Anton Avramov | 2025-02-06 | Bug fixes |
 | a2ee43c | Anton Avramov | 2025-02-06 | Flatten image for cellpose model to segment the frame. Fixed .tif handling routines |
 | 2862fb6 | Anton Avramov | 2025-02-06 | Corrected the cyanobacteria name to meet industry standards in run_segmentation.py |
